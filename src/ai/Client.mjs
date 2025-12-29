@@ -1,6 +1,7 @@
 import Base            from '../core/Base.mjs';
 import ClassSystemUtil from '../util/ClassSystem.mjs';
 import Socket          from '../data/connection/WebSocket.mjs';
+import StoreManager    from '../manager/Store.mjs';
 
 /**
  * The AI Client establishes a WebSocket connection to the Neural Link MCP Server.
@@ -266,6 +267,32 @@ class Client extends Base {
                 if (!component) throw new Error('Root component not found');
                 return {vnode: component.vnode};
 
+            case 'get_record':
+                let {recordId, storeId} = params,
+                    record;
+
+                if (storeId) {
+                    const store = Neo.get(storeId);
+                    if (!store) throw new Error(`Store not found: ${storeId}`);
+                    record = store.get(recordId)
+                } else {
+                    const matches = [];
+                    StoreManager.items.forEach(store => {
+                        const rec = store.get(recordId);
+                        if (rec) matches.push(rec)
+                    });
+
+                    if (matches.length > 1) {
+                        throw new Error(`Multiple records found with ID ${recordId}. Please specify storeId.`)
+                    } else if (matches.length === 1) {
+                        record = matches[0]
+                    }
+                }
+
+                if (!record) throw new Error(`Record not found: ${recordId}`);
+
+                return record.toJSON();
+
             case 'get_window_info':
                 const windowManager = Neo.manager?.Window;
 
@@ -282,6 +309,39 @@ class Client extends Base {
                 }
 
                 return {windows: []};
+
+            case 'inspect_store':
+                const store = Neo.get(params.storeId);
+                if (!store) throw new Error(`Store not found: ${params.storeId}`);
+
+                const items = [];
+                const limit = Math.min(store.count, 50);
+
+                for (let i = 0; i < limit; i++) {
+                    const record = store.getAt(i);
+                    if (record) {
+                        items.push(record.toJSON())
+                    }
+                }
+
+                return {
+                    id     : store.id,
+                    count  : store.count,
+                    model  : store.model?.className || 'N/A',
+                    filters: store.exportFilters?.() || [],
+                    sorters: store.exportSorters?.() || [],
+                    items
+                };
+
+            case 'list_stores':
+                return {
+                    stores: StoreManager.items.map(s => ({
+                        id      : s.id,
+                        model   : s.model?.className || 'N/A',
+                        count   : s.count,
+                        isLoaded: s.isLoaded
+                    }))
+                };
 
             case 'reload_page':
                 Neo.Main.reloadWindow();
