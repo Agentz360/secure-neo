@@ -81,8 +81,8 @@ class Server extends Base {
             health.details.forEach(detail => logger.warn(`    ${detail}`));
         } else {
             logger.info('✅ [Startup] Neural Link health check passed');
-            logger.info(`   - Active Sessions: ${health.server.activeSessions}`);
-            logger.info(`   - Connected Windows: ${health.server.connectedWindows}`);
+            logger.info(`   - Active Sessions: ${health.session.activeApps}`);
+            logger.info(`   - Connected Windows: ${health.session.connectedWindows}`);
         }
     }
 
@@ -102,7 +102,7 @@ class Server extends Base {
                 return { tools: mcpTools, nextCursor: nextCursor || undefined };
             } catch (error) {
                 logger.error('[MCP] Error listing tools:', error);
-                return { tools: [], nextCursor: null, error: error.message };
+                return { tools: [], nextCursor: undefined, error: error.message };
             }
         });
 

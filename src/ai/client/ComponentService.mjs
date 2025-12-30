@@ -16,49 +16,121 @@ class ComponentService extends Service {
 
     /**
      * @param {Object} params
+     * @param {String} params.id
+     * @param {String} params.property
      * @returns {Object}
      */
-    getComponentProperty(params) {
-        const component = Neo.getComponent(params.id);
-        if (!component) throw new Error(`Component not found: ${params.id}`);
-        return {value: this.safeSerialize(component[params.property])};
+    getComponentProperty({id, property}) {
+        const component = Neo.getComponent(id);
+        if (!component) throw new Error(`Component not found: ${id}`);
+        return {value: this.safeSerialize(component[property])};
+    }
+
+    /**
+     * @param {Object}   params
+     * @param {String[]} params.componentIds
+     * @returns {Object}
+     */
+    async getDomRect({componentIds}) {
+        if (!Array.isArray(componentIds) || componentIds.length === 0) {
+            throw new Error('componentIds must be a non-empty array')
+        }
+
+        // Use the first component to resolve the windowId context
+        const component = Neo.getComponent(componentIds[0]);
+
+        if (!component) {
+            throw new Error(`Component not found: ${componentIds[0]}`)
+        }
+
+        const rects = await component.getDomRect(componentIds);
+
+        return {
+            rects: Array.isArray(rects) ? rects : [rects]
+        }
     }
 
     /**
      * @param {Object} params
+     * @param {String} params.componentId
+     * @param {Object} [params.options]
      * @returns {Object}
      */
-    getComponentTree(params) {
-        return {tree: this.serializeComponent(this.getComponentRoot(params.rootId), params.depth || -1)};
+    highlightComponent({componentId, options}) {
+        let component = Neo.getComponent(componentId),
+            originalStyle;
+
+        if (!component) {
+            throw new Error(`Component not found: ${componentId}`)
+        }
+
+        options = options || {};
+
+        const
+            color    = options.color    || 'red',
+            duration = options.duration || 2000,
+            mode     = options.style    || 'outline'; // 'outline' or 'box-shadow'
+
+        originalStyle = component.style || {};
+
+        let highlightStyle = {};
+
+        if (mode === 'outline') {
+            highlightStyle.outline       = `2px solid ${color}`;
+            highlightStyle.outlineOffset = '-2px'
+        } else {
+            highlightStyle.boxShadow = `0 0 10px ${color}, inset 0 0 10px ${color}`
+        }
+
+        component.style = {...originalStyle, ...highlightStyle};
+
+        this.timeout(duration).then(() => {
+            component.style = originalStyle
+        });
+
+        return {success: true}
     }
 
     /**
      * @param {Object} params
+     * @param {Number} [params.depth]
+     * @param {String} [params.rootId]
      * @returns {Object}
      */
-    getVdomTree(params) {
-        const component = this.getComponentRoot(params.rootId);
+    getComponentTree({depth, rootId}) {
+        return {tree: this.serializeComponent(this.getComponentRoot(rootId), depth || -1)}
+    }
+
+    /**
+     * @param {Object} params
+     * @param {String} [params.rootId]
+     * @returns {Object}
+     */
+    getVdomTree({rootId}) {
+        const component = this.getComponentRoot(rootId);
         if (!component) throw new Error('Root component not found');
-        return {vdom: component.vdom};
+        return {vdom: component.vdom}
     }
 
     /**
      * @param {Object} params
+     * @param {String} [params.rootId]
      * @returns {Object}
      */
-    getVnodeTree(params) {
-        const component = this.getComponentRoot(params.rootId);
+    getVnodeTree({rootId}) {
+        const component = this.getComponentRoot(rootId);
         if (!component) throw new Error('Root component not found');
-        return {vnode: component.vnode};
+        return {vnode: component.vnode}
     }
 
     /**
      * @param {Object} params
+     * @param {String} [params.rootId]
+     * @param {Object} params.selector
      * @returns {Object}
      */
-    queryComponent(params) {
-        let {selector, rootId} = params,
-            matches = [];
+    queryComponent({rootId, selector}) {
+        let matches = [];
 
         if (rootId) {
             const component = Neo.getComponent(rootId);
@@ -78,18 +150,21 @@ class ComponentService extends Service {
                 className: c.className,
                 ntype    : c.ntype
             }))
-        };
+        }
     }
 
     /**
      * @param {Object} params
+     * @param {String} params.id
+     * @param {String} params.property
+     * @param {*}      params.value
      * @returns {Object}
      */
-    setComponentProperty(params) {
-        const component = Neo.getComponent(params.id);
-        if (!component) throw new Error(`Component not found: ${params.id}`);
-        component[params.property] = params.value;
-        return {success: true};
+    setComponentProperty({id, property, value}) {
+        const component = Neo.getComponent(id);
+        if (!component) throw new Error(`Component not found: ${id}`);
+        component[property] = value;
+        return {success: true}
     }
 
     /**
@@ -124,6 +199,10 @@ class ComponentService extends Service {
             className: component.className,
             ntype    : component.ntype
         };
+
+        if (component.stateProvider) {
+            result.stateProviderId = component.stateProvider.id
+        }
 
         if (maxDepth === -1 || currentDepth < maxDepth) {
             const children = Neo.manager.Component.getChildren(component);

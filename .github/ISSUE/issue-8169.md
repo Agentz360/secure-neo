@@ -15,37 +15,47 @@ author: tobiu
 commentsCount: 0
 parentIssue: null
 subIssues:
-  - 8170
-  - 8171
-  - 8172
-  - 8016
-  - 8173
-  - 8174
-  - 8175
-  - 8176
-  - 8177
-  - 8178
-  - 8179
-  - 8180
-  - 8181
-  - 8183
-  - 8184
-  - 8185
-  - 8186
-  - 8187
-  - 8188
-  - 8189
-  - 8190
-  - 8191
-  - 8192
-  - 8193
-  - 8182
-  - 8194
-  - 8195
-  - 8196
-  - 8197
-subIssuesCompleted: 19
-subIssuesTotal: 29
+  - '[x] 8170'
+  - '[x] 8171'
+  - '[x] 8172'
+  - '[x] 8016'
+  - '[x] 8173'
+  - '[x] 8174'
+  - '[x] 8175'
+  - '[x] 8176'
+  - '[x] 8177'
+  - '[x] 8178'
+  - '[x] 8179'
+  - '[x] 8180'
+  - '[x] 8181'
+  - '[x] 8183'
+  - '[x] 8184'
+  - '[x] 8185'
+  - '[x] 8186'
+  - '[x] 8187'
+  - '[x] 8188'
+  - '[ ] 8189'
+  - '[ ] 8190'
+  - '[ ] 8191'
+  - '[ ] 8192'
+  - '[ ] 8193'
+  - '[x] 8182'
+  - '[x] 8194'
+  - '[x] 8195'
+  - '[x] 8196'
+  - '[ ] 8197'
+  - '[x] 8206'
+  - '[x] 8207'
+  - '[x] 8208'
+  - '[x] 8210'
+  - '[x] 8211'
+  - '[x] 8209'
+  - '[x] 8212'
+  - '[x] 8213'
+  - '[x] 8214'
+  - '[x] 8215'
+subIssuesCompleted: 33
+subIssuesTotal: 39
 blockedBy: []
 blocking: []
 ---
@@ -109,4 +119,14 @@ Empower AI agents to "see" and "touch" the runtime application, moving beyond st
 - 2025-12-28 @tobiu added sub-issue #8195
 - 2025-12-28 @tobiu added sub-issue #8196
 - 2025-12-29 @tobiu added sub-issue #8197
+- 2025-12-29 @tobiu added sub-issue #8206
+- 2025-12-29 @tobiu added sub-issue #8207
+- 2025-12-30 @tobiu added sub-issue #8208
+- 2025-12-30 @tobiu added sub-issue #8210
+- 2025-12-30 @tobiu added sub-issue #8211
+- 2025-12-30 @tobiu added sub-issue #8209
+- 2025-12-30 @tobiu added sub-issue #8212
+- 2025-12-30 @tobiu added sub-issue #8213
+- 2025-12-30 @tobiu added sub-issue #8214
+- 2025-12-30 @tobiu added sub-issue #8215
 

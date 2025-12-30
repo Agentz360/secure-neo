@@ -72,6 +72,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /component/rect/get:
+    post:
+      summary: Get Component DOM Rects
+      operationId: get_dom_rect
+      x-pass-as-object: true
+      description: |
+        Retrieves the DOM rectangles for one or more components.
+
+        **When to Use:**
+        To inspect the physical layout and visibility of components.
+      tags: [Component]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetDomRectRequest'
+      responses:
+        '200':
+          description: List of DOMRects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rects:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /component/tree:
     post:
       summary: Get Component Tree
@@ -277,6 +319,64 @@ paths:
               schema:
                 type: object
 
+  /data/state/inspect:
+    post:
+      summary: Inspect State Provider
+      operationId: inspect_state_provider
+      x-pass-as-object: true
+      description: |
+        Inspects a specific state provider.
+
+        **When to Use:**
+        To view the hierarchical data of a StateProvider.
+      tags: [Data]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InspectStateProviderRequest'
+      responses:
+        '200':
+          description: State provider data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  data:
+                    type: object
+
+  /data/state/modify:
+    post:
+      summary: Modify State Provider
+      operationId: modify_state_provider
+      x-pass-as-object: true
+      description: |
+        Modifies the data of a specific state provider.
+
+        **When to Use:**
+        To update application state stored in a StateProvider.
+      tags: [Data]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyStateProviderRequest'
+      responses:
+        '200':
+          description: Modification successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
   /drag/state:
     post:
       summary: Get Drag State
@@ -355,6 +455,93 @@ paths:
       responses:
         '200':
           description: Page reloaded successfully
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /navigation/history:
+    post:
+      summary: Get Route History
+      operationId: get_route_history
+      x-pass-as-object: true
+      description: |
+        Retrieves the navigation history stack and current route information.
+
+        **When to Use:**
+        To understand where the user is in the application and how they got there.
+      tags: [Navigation]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetRouteHistoryRequest'
+      responses:
+        '200':
+          description: Route history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  windowId:
+                    type: integer
+                  history:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /navigation/route/set:
+    post:
+      summary: Set Route
+      operationId: set_route
+      x-pass-as-object: true
+      description: |
+        Navigates the application to a specific route (hash).
+
+        **When to Use:**
+        To drive the application to a specific view or state.
+      tags: [Navigation]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetRouteRequest'
+      responses:
+        '200':
+          description: Route set successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  hash:
+                    type: string
         '400':
           description: Invalid request body
           content:
@@ -529,6 +716,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /component/highlight:
+    post:
+      summary: Highlight Component
+      operationId: highlight_component
+      x-pass-as-object: true
+      description: |
+        Highlights a component visually for debugging purposes.
+
+        **When to Use:**
+        To visually identify a component on the page during debugging or interaction sessions.
+      tags: [Component]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HighlightComponentRequest'
+      responses:
+        '200':
+          description: Component highlighted successfully
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     HealthCheckResponse:
@@ -540,15 +760,26 @@ components:
         timestamp:
           type: string
           format: date-time
-        server:
+        bridge:
           type: object
           properties:
+            connected:
+              type: boolean
+            agentId:
+              type: string
             port:
               type: integer
-            activeSessions:
+        session:
+          type: object
+          properties:
+            activeApps:
               type: integer
             connectedWindows:
               type: integer
+            agents:
+              type: array
+              items:
+                type: string
         details:
           type: array
           items:
@@ -570,6 +801,20 @@ components:
         property:
           type: string
           description: The property name to retrieve
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    GetDomRectRequest:
+      type: object
+      required:
+        - componentIds
+      properties:
+        componentIds:
+          type: array
+          items:
+            type: string
+          description: List of component IDs to inspect.
         sessionId:
           type: string
           description: The target App Worker Session ID
@@ -605,6 +850,31 @@ components:
     ReloadPageRequest:
       type: object
       properties:
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    GetRouteHistoryRequest:
+      type: object
+      properties:
+        windowId:
+          type: integer
+          description: Optional window ID to get history for.
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    SetRouteRequest:
+      type: object
+      required:
+        - hash
+      properties:
+        hash:
+          type: string
+          description: The new hash value to set (e.g., "#mainview=home").
+        windowId:
+          type: integer
+          description: Optional window ID to target.
         sessionId:
           type: string
           description: The target App Worker Session ID
@@ -658,6 +928,59 @@ components:
         storeId:
           type: string
           description: Optional Store ID to scope the search
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    InspectStateProviderRequest:
+      type: object
+      required:
+        - providerId
+      properties:
+        providerId:
+          type: string
+          description: The ID of the state provider to inspect
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    ModifyStateProviderRequest:
+      type: object
+      required:
+        - providerId
+        - data
+      properties:
+        providerId:
+          type: string
+          description: The ID of the state provider to modify
+        data:
+          type: object
+          description: The data object to merge into the provider
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    HighlightComponentRequest:
+      type: object
+      required:
+        - componentId
+      properties:
+        componentId:
+          type: string
+          description: The component ID
+        options:
+          type: object
+          properties:
+            color:
+              type: string
+              description: Highlight color (default 'red')
+            duration:
+              type: integer
+              description: Duration in ms (default 2000)
+            style:
+              type: string
+              enum: [outline, box-shadow]
+              description: Highlight style (default 'outline')
         sessionId:
           type: string
           description: The target App Worker Session ID

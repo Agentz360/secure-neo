@@ -17,11 +17,12 @@ class DataService extends Service {
 
     /**
      * @param {Object} params
+     * @param {String} params.recordId
+     * @param {String} [params.storeId]
      * @returns {Object}
      */
-    getRecord(params) {
-        let {recordId, storeId} = params,
-            record;
+    getRecord({recordId, storeId}) {
+        let record;
 
         if (storeId) {
             const store = Neo.get(storeId);
@@ -43,16 +44,32 @@ class DataService extends Service {
 
         if (!record) throw new Error(`Record not found: ${recordId}`);
 
-        return record.toJSON();
+        return record.toJSON()
     }
 
     /**
      * @param {Object} params
+     * @param {String} params.providerId
      * @returns {Object}
      */
-    inspectStore(params) {
-        const store = Neo.get(params.storeId);
-        if (!store) throw new Error(`Store not found: ${params.storeId}`);
+    inspectStateProvider({providerId}) {
+        const provider = Neo.get(providerId);
+        if (!provider) throw new Error(`StateProvider not found: ${providerId}`);
+
+        return {
+            id  : provider.id,
+            data: provider.getHierarchyData()
+        }
+    }
+
+    /**
+     * @param {Object} params
+     * @param {String} params.storeId
+     * @returns {Object}
+     */
+    inspectStore({storeId}) {
+        const store = Neo.get(storeId);
+        if (!store) throw new Error(`Store not found: ${storeId}`);
 
         const items = [];
         const limit = Math.min(store.count, 50);
@@ -71,7 +88,7 @@ class DataService extends Service {
             filters: store.exportFilters?.() || [],
             sorters: store.exportSorters?.() || [],
             items
-        };
+        }
     }
 
     /**
@@ -86,7 +103,21 @@ class DataService extends Service {
                 count   : s.count,
                 isLoaded: s.isLoaded
             }))
-        };
+        }
+    }
+
+    /**
+     * @param {Object} params
+     * @param {Object} params.data
+     * @param {String} params.providerId
+     * @returns {Object}
+     */
+    modifyStateProvider({data, providerId}) {
+        const provider = Neo.get(providerId);
+        if (!provider) throw new Error(`StateProvider not found: ${providerId}`);
+
+        provider.setData(data);
+        return {success: true}
     }
 }
 

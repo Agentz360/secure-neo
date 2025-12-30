@@ -75,18 +75,24 @@ class Client extends Base {
 
         me.serviceMap = {
             get_component       : me.services.component,
+            get_dom_rect        : me.services.component,
             get_vdom            : me.services.component,
             get_vnode           : me.services.component,
+            highlight_component : me.services.component,
             query_component     : me.services.component,
             set_component       : me.services.component,
 
             get_record          : me.services.data,
+            inspect_state_provider: me.services.data,
             inspect_store       : me.services.data,
             list_stores         : me.services.data,
+            modify_state_provider: me.services.data,
 
             get_drag            : me.services.runtime,
+            get_route           : me.services.runtime,
             get_window          : me.services.runtime,
-            reload_page         : me.services.runtime
+            reload_page         : me.services.runtime,
+            set_route           : me.services.runtime
         };
 
         Neo.currentWorker.on({
@@ -95,7 +101,7 @@ class Client extends Base {
             scope     : me
         });
 
-        me.connect();
+        me.connect()
     }
 
     /**
@@ -103,10 +109,19 @@ class Client extends Base {
      * Uses Neo.data.connection.WebSocket for robust connection management.
      */
     connect() {
-        let me  = this,
-            url = new URL(me.url);
+        let me      = this,
+            url     = new URL(me.url),
+            appName = 'Unknown App';
+
+        if (Neo.config.appPath) {
+            const match = Neo.config.appPath.match(/apps\/([^\/]+)\//);
+            if (match) {
+                appName = match[1];
+            }
+        }
 
         url.searchParams.set('appWorkerId', Neo.worker.App.id);
+        url.searchParams.set('appName',     appName);
 
         me.socket = ClassSystemUtil.beforeSetInstance(me.socketConfig, Socket, {
             serverAddress: url.toString(),
@@ -118,6 +133,46 @@ class Client extends Base {
                 scope  : me
             }
         })
+    }
+
+    /**
+     * Routes specific JSON-RPC methods to their corresponding implementation.
+     * This method acts as the central dispatcher for all AI-driven commands.
+     * @param {String} method The JSON-RPC method name
+     * @param {Object} params The parameters associated with the method
+     * @returns {Promise<*>} The result of the operation
+     */
+    async handleRequest(method, params) {
+        let me      = this,
+            service = null,
+            prefix;
+
+        // Find matching service based on prefix
+        // e.g. "get_component_property" -> matches "get_component" prefix
+        for (prefix in me.serviceMap) {
+            if (method.startsWith(prefix)) {
+                service = me.serviceMap[prefix];
+                break
+            }
+        }
+
+        const fnName = Neo.snakeToCamel(method);
+
+        if (service) {
+            const fn = service[fnName];
+
+            if (Neo.isFunction(fn)) {
+                return fn.call(service, params)
+            } else if (Neo.isPromise(fn)) {
+                return await fn.call(service, params)
+            }
+        }
+
+        if (service && typeof service[fnName] === 'function') {
+            return service[fnName](params)
+        }
+
+        throw new Error(`Unknown method: ${method}`);
     }
 
     /**
@@ -141,12 +196,11 @@ class Client extends Base {
 
     /**
      * @param {Object} data
+     * @param {String} data.windowId
      */
-    onAppWorkerWindowDisconnect(data) {
+    onAppWorkerWindowDisconnect({windowId}) {
         if (this.isConnected) {
-            this.sendNotification('window_disconnected', {
-                windowId: data.windowId
-            })
+            this.sendNotification('window_disconnected', {windowId})
         }
     }
 
@@ -230,51 +284,6 @@ class Client extends Base {
     }
 
     /**
-     * Routes specific JSON-RPC methods to their corresponding implementation.
-     * This method acts as the central dispatcher for all AI-driven commands.
-     * @param {String} method The JSON-RPC method name
-     * @param {Object} params The parameters associated with the method
-     * @returns {Promise<*>} The result of the operation
-     */
-    async handleRequest(method, params) {
-        let me      = this,
-            service = null,
-            prefix;
-
-        // Find matching service based on prefix
-        // e.g. "get_component_property" -> matches "get_component" prefix
-        for (prefix in me.serviceMap) {
-            if (method.startsWith(prefix)) {
-                service = me.serviceMap[prefix];
-                break
-            }
-        }
-
-        const fnName = Neo.snakeToCamel(method);
-
-        if (service && typeof service[fnName] === 'function') {
-            return service[fnName](params)
-        }
-
-        throw new Error(`Unknown method: ${method}`);
-    }
-
-    /**
-     * Sends a JSON-RPC notification (no id)
-     * @param {String} method
-     * @param {Object} params
-     */
-    sendNotification(method, params) {
-        if (this.isConnected) {
-            this.socket.sendMessage(JSON.stringify({
-                jsonrpc: '2.0',
-                method,
-                params
-            }))
-        }
-    }
-
-    /**
      * Sends a JSON-RPC error response
      * @param {Number|String} id
      * @param {String} message
@@ -290,6 +299,21 @@ class Client extends Base {
                     message: message,
                     data   : {stack}
                 }
+            }))
+        }
+    }
+
+    /**
+     * Sends a JSON-RPC notification (no id)
+     * @param {String} method
+     * @param {Object} params
+     */
+    sendNotification(method, params) {
+        if (this.isConnected) {
+            this.socket.sendMessage(JSON.stringify({
+                jsonrpc: '2.0',
+                method,
+                params
             }))
         }
     }
