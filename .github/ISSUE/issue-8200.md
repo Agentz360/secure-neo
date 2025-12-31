@@ -14,9 +14,23 @@ githubUrl: 'https://github.com/neomjs/neo/issues/8200'
 author: tobiu
 commentsCount: 0
 parentIssue: null
-subIssues: []
-subIssuesCompleted: 0
-subIssuesTotal: 0
+subIssues:
+  - '[x] 8224 [Neural Link] Implement toJSON in core.Base'
+  - '[x] 8226 [Neural Link] Implement toJSON in component.Abstract'
+  - '[x] 8225 [Neural Link] Implement toJSON in component.Base'
+  - '[x] 8227 [Neural Link] Implement toJSON in button.Base'
+  - '[x] 8228 [Neural Link] Implement toJSON in container.Base'
+  - '[x] 8232 [Neural Link] Implement toJSON in state.Provider'
+  - '[x] 8233 [Neural Link] Implement toJSON in layout.Base'
+  - '[x] 8234 [Neural Link] Implement toJSON in layout.Flexbox'
+  - '[x] 8235 [Neural Link] Implement toJSON in layout.Card'
+  - '[x] 8236 [Neural Link] Implement toJSON in layout.Form'
+  - '[x] 8237 [Neural Link] Implement toJSON in layout.Cube'
+  - '[x] 8238 [Neural Link] Implement toJSON in collection.Base'
+  - '[x] 8239 [Neural Link] Implement toJSON in collection.Filter'
+  - '[x] 8240 [Neural Link] Implement toJSON in collection.Sorter'
+subIssuesCompleted: 14
+subIssuesTotal: 14
 blockedBy: []
 blocking: []
 ---
@@ -58,4 +72,19 @@ Every class decides its own JSON representation. `JSON.stringify(instance)` auto
 - 2025-12-29 @tobiu added the `ai` label
 - 2025-12-29 @tobiu added the `architecture` label
 - 2025-12-29 @tobiu assigned to @tobiu
+- 2025-12-31 @tobiu added sub-issue #8224
+- 2025-12-31 @tobiu added sub-issue #8226
+- 2025-12-31 @tobiu added sub-issue #8225
+- 2025-12-31 @tobiu added sub-issue #8227
+- 2025-12-31 @tobiu added sub-issue #8228
+- 2025-12-31 @tobiu added sub-issue #8232
+- 2025-12-31 @tobiu referenced in commit `665b841` - "docs(issue): Update ticket state for #8200 and #8232"
+- 2025-12-31 @tobiu added sub-issue #8233
+- 2025-12-31 @tobiu added sub-issue #8234
+- 2025-12-31 @tobiu added sub-issue #8235
+- 2025-12-31 @tobiu added sub-issue #8236
+- 2025-12-31 @tobiu added sub-issue #8237
+- 2025-12-31 @tobiu added sub-issue #8238
+- 2025-12-31 @tobiu added sub-issue #8239
+- 2025-12-31 @tobiu added sub-issue #8240
 
