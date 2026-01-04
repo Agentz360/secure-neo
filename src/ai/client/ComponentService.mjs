@@ -28,6 +28,27 @@ class ComponentService extends Service {
 
     /**
      * @param {Object}   params
+     * @param {String}   params.componentId
+     * @param {String[]} params.variables
+     * @returns {Object}
+     */
+    async getComputedStyles({componentId, variables}) {
+        const component = Neo.getComponent(componentId);
+
+        if (!component) {
+            throw new Error(`Component not found: ${componentId}`)
+        }
+
+        const styles = await Neo.main.DomAccess.getComputedStyle({
+            id   : component.id,
+            style: variables
+        });
+
+        return {styles}
+    }
+
+    /**
+     * @param {Object}   params
      * @param {String[]} params.componentIds
      * @returns {Object}
      */
@@ -145,11 +166,7 @@ class ComponentService extends Service {
         }
 
         return {
-            components: matches.map(c => ({
-                id       : c.id,
-                className: c.className,
-                ntype    : c.ntype
-            }))
+            components: matches.map(c => c.toJSON())
         }
     }
 
@@ -194,15 +211,7 @@ class ComponentService extends Service {
     serializeComponent(component, maxDepth, currentDepth=1) {
         if (!component) return null;
 
-        const result = {
-            id       : component.id,
-            className: component.className,
-            ntype    : component.ntype
-        };
-
-        if (component.stateProvider) {
-            result.stateProviderId = component.stateProvider.id
-        }
+        const result = component.toJSON();
 
         if (maxDepth === -1 || currentDepth < maxDepth) {
             const children = Neo.manager.Component.getChildComponents(component);

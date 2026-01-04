@@ -72,6 +72,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /component/styles/get:
+    post:
+      summary: Get Computed Styles
+      operationId: get_computed_styles
+      x-pass-as-object: true
+      description: |
+        Retrieves the computed styles for a component.
+
+        **When to Use:**
+        To verify visual state and theming (The "Visual Gap").
+      tags: [Component]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetComputedStylesRequest'
+      responses:
+        '200':
+          description: Computed styles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  styles:
+                    type: object
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /component/rect/get:
     post:
       summary: Get Component DOM Rects
@@ -101,6 +141,91 @@ paths:
                     type: array
                     items:
                       type: object
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /component/dom/events/get:
+    post:
+      summary: Get DOM Event Listeners
+      operationId: get_dom_event_listeners
+      x-pass-as-object: true
+      description: |
+        Retrieves detailed DOM event listeners for a specific component.
+
+        **When to Use:**
+        To debug event delegation and interaction logic on a specific component.
+      tags: [Component]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetDomEventListenersRequest'
+      responses:
+        '200':
+          description: List of event listeners
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  listeners:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /component/dom/events/summary:
+    post:
+      summary: Get DOM Event Summary
+      operationId: get_dom_event_summary
+      x-pass-as-object: true
+      description: |
+        Retrieves a high-level summary of the DomEvent manager state.
+
+        **When to Use:**
+        To understand the global event landscape and identify potential hotspots.
+      tags: [Component]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetDomEventSummaryRequest'
+      responses:
+        '200':
+          description: Event summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalEvents:
+                    type: integer
+                  byEvent:
+                    type: object
+                  byComponent:
+                    type: object
         '400':
           description: Invalid request body
           content:
@@ -607,6 +732,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /console/logs/get:
+    post:
+      summary: Get Console Logs
+      operationId: get_console_logs
+      x-pass-as-object: true
+      description: |
+        Retrieves the console logs from the App Worker.
+
+        **When to Use:**
+        To see the App Worker's console output (log, warn, error) and exceptions.
+      tags: [Inspection]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetConsoleLogsRequest'
+      responses:
+        '200':
+          description: List of logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    message:
+                      type: string
+                    timestamp:
+                      type: number
+                    stack:
+                      type: string
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /worker/topology:
     post:
       summary: Get Worker Topology
@@ -749,6 +921,77 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /class/inspect:
+    post:
+      summary: Inspect Class
+      operationId: inspect_class
+      x-pass-as-object: true
+      description: |
+        Inspects a Neo.mjs class to retrieve its **Rich Blueprint**.
+
+        Returns a detailed schema including:
+        - **Hierarchy:** Full `ntypeChain` and `superClass`.
+        - **Mixins:** Resolved list of applied mixins.
+        - **Methods:** Cleaned public API (filtering out lifecycle noise).
+        - **Configs:** A rich map where each key contains:
+          - `value`: The resolved default value.
+          - `meta`: Descriptor properties (e.g., `merge: 'shallow'`).
+          - `hooks`: List of active reactive hooks (`beforeSet`, `afterSet`) found on the prototype.
+
+        **When to Use:**
+        To understand the *capabilities* and *reactivity* of a class. Use this to read the "manual" before instantiating or modifying a component.
+      tags: [Introspection]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InspectClassRequest'
+      responses:
+        '200':
+          description: Class schema
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /interaction/simulate_event:
+    post:
+      summary: Simulate DOM Event
+      operationId: simulate_event
+      x-pass-as-object: true
+      description: |
+        Simulates a native DOM event on a specific component or a sequence of events.
+
+        **When to Use:**
+        To trigger user interactions like clicks, keyboard input, or drag sequences for E2E testing.
+      tags: [Interaction]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulateEventRequest'
+      responses:
+        '200':
+          description: Event(s) dispatched successfully
+          content:
+            application/json:
+              schema:
+                type: boolean
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   schemas:
     HealthCheckResponse:
@@ -805,6 +1048,24 @@ components:
           type: string
           description: The target App Worker Session ID
 
+    GetComputedStylesRequest:
+      type: object
+      required:
+        - componentId
+        - variables
+      properties:
+        componentId:
+          type: string
+          description: The component ID
+        variables:
+          type: array
+          items:
+            type: string
+          description: The list of style properties/variables to retrieve
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
     GetDomRectRequest:
       type: object
       required:
@@ -815,6 +1076,25 @@ components:
           items:
             type: string
           description: List of component IDs to inspect.
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    GetDomEventListenersRequest:
+      type: object
+      required:
+        - componentId
+      properties:
+        componentId:
+          type: string
+          description: The component ID to inspect
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    GetDomEventSummaryRequest:
+      type: object
+      properties:
         sessionId:
           type: string
           description: The target App Worker Session ID
@@ -846,6 +1126,20 @@ components:
         sessionId:
           type: string
           description: The target App Worker Session ID
+
+    GetConsoleLogsRequest:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+        filter:
+          type: string
+          description: Optional string to filter logs by message content.
+        type:
+          type: string
+          enum: [log, warn, error, info]
+          description: Optional filter by log type.
 
     ReloadPageRequest:
       type: object
@@ -906,6 +1200,14 @@ components:
         storeId:
           type: string
           description: The ID of the store to inspect
+        limit:
+          type: integer
+          default: 50
+          description: Maximum number of records to return
+        offset:
+          type: integer
+          default: 0
+          description: The record index to start from
         sessionId:
           type: string
           description: The target App Worker Session ID
@@ -984,6 +1286,52 @@ components:
         sessionId:
           type: string
           description: The target App Worker Session ID
+
+    InspectClassRequest:
+      type: object
+      required:
+        - className
+      properties:
+        className:
+          type: string
+          description: The fully qualified class name (e.g., "Neo.button.Base").
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    SimulateEventRequest:
+      type: object
+      required:
+        - events
+      properties:
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+        events:
+          type: array
+          items:
+            type: object
+            required:
+              - targetId
+              - type
+              - windowId
+            properties:
+              targetId:
+                type: string
+                description: The DOM ID of the target element.
+              type:
+                type: string
+                description: "The event type (e.g., 'click', 'keydown')."
+              options:
+                type: object
+                description: "Event constructor options (e.g., {bubbles: true})."
+              delay:
+                type: integer
+                description: "Delay in ms before this event."
+              windowId:
+                type: string
+                description: "Target window ID."
+          description: "Sequence of events to dispatch."
 
     ErrorResponse:
       type: object

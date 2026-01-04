@@ -34,10 +34,10 @@ subIssues:
   - '[x] 8186 Feat: Neural Link - Semantic Component Query'
   - '[x] 8187 Feat: Neural Link - State Provider Inspection & Modification'
   - '[x] 8188 Feat: Neural Link - Visual Highlighting'
-  - '[ ] 8189 Feat: Neural Link - Advanced Event Simulation'
+  - '[x] 8189 Feat: Neural Link - Advanced Event Simulation'
   - '[ ] 8190 Feat: Neural Link - Runtime Code Hot-Patching'
   - '[ ] 8191 Feat: Neural Link - Global Config Management'
-  - '[ ] 8192 Feat: Neural Link - Log & Error Streaming'
+  - '[x] 8192 Feat: Neural Link - Log & Error Streaming'
   - '[ ] 8193 Feat: Neural Link - Namespace Discovery'
   - '[x] 8182 Feat: Neural Link Identity and Recovery'
   - '[x] 8194 Feat: Neural Link - Propagate Runtime Errors to Agent'
@@ -57,8 +57,16 @@ subIssues:
   - '[x] 8216 Fix Neural Link server startup crash due to missing startServer/stopServer methods'
   - '[x] 8222 Fix Neural Link Recovery: Exempt server control tools from health check gate'
   - '[x] 8223 Investigate and Fix get_component_tree Timeout'
-subIssuesCompleted: 36
-subIssuesTotal: 42
+  - '[x] 8271 [Neural Link] Refactor ComponentService to use toJSON protocol'
+  - '[x] 8272 [Neural Link] Refactor DataService to use toJSON protocol'
+  - '[x] 8273 [Neural Link] Refactor RuntimeService to use toJSON protocol'
+  - '[x] 8274 [Neural Link] Parameterize inspectStore limit and offset'
+  - '[x] 8278 [Neural Link] Feature: Tool get_dom_event_listeners'
+  - '[x] 8279 [Neural Link] Feature: Tool get_dom_event_summary'
+  - '[x] 8280 [Neural Link] Feature: Tool inspect_class'
+  - '[x] 8281 [Neural Link] Feature: Tool get_computed_styles'
+subIssuesCompleted: 49
+subIssuesTotal: 54
 blockedBy: []
 blocking: []
 ---
@@ -135,4 +143,7 @@ Empower AI agents to "see" and "touch" the runtime application, moving beyond st
 - 2025-12-30 @tobiu added sub-issue #8216
 - 2025-12-30 @tobiu added sub-issue #8222
 - 2025-12-30 @tobiu added sub-issue #8223
+- 2026-01-01 @tobiu added sub-issue #8271
+- 2026-01-01 @tobiu added sub-issue #8272
+- 2026-01-01 @tobiu added sub-issue #8273
 

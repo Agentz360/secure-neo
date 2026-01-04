@@ -1607,11 +1607,15 @@ class Component extends Abstract {
 
         return {
             ...super.toJSON(),
+            align       : me.align,
             cls         : me.cls,
+            controller  : me.controller?.toJSON(),
             disabled    : me.disabled,
             height      : me.height,
             hidden      : me.hidden,
+            keys        : me.keys?.toJSON(),
             reference   : me.reference,
+            role        : me.role,
             style       : me.style,
             theme       : me.theme,
             ui          : me.ui,

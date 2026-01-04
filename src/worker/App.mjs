@@ -80,7 +80,9 @@ class App extends Base {
 
         // convenience shortcuts
         Neo.applyDeltas    = me.applyDeltas   .bind(me);
-        Neo.setCssVariable = me.setCssVariable.bind(me)
+        Neo.setCssVariable = me.setCssVariable.bind(me);
+
+        me.interceptConsole()
     }
 
     /**
@@ -277,12 +279,12 @@ class App extends Base {
     async getAddon(name, windowId) {
         let addon = Neo.main?.addon?.[name];
 
-        if (!addon) {
-            await Neo.Main.importAddon({name, windowId});
-            addon = Neo.main.addon[name]
+        if (addon) {
+            return addon
         }
 
-        return addon
+        await Neo.Main.importAddon({name, windowId});
+        return Neo.main.addon[name]
     }
 
     /**
@@ -330,6 +332,86 @@ class App extends Base {
             /* webpackMode: "lazy" */
             `../../${path}.mjs`
         )
+    }
+
+    /**
+     * Intercepts console logs and errors to forward them to the Neural Link
+     */
+    interceptConsole() {
+        const types = ['log', 'warn', 'error', 'info'];
+
+        types.forEach(type => {
+            const original = console[type];
+
+            console[type] = (...args) => {
+                original.apply(console, args);
+
+                // Use the Client singleton if available (lazy check)
+                const client = Neo.ai?.Client;
+
+                if (client) {
+                    try {
+                        const message = args.map(arg => {
+                            if (arg instanceof Error) {
+                                return arg.message + '\n' + arg.stack
+                            }
+                            if (typeof arg === 'object') {
+                                try {
+                                    return JSON.stringify(arg)
+                                } catch (e) {
+                                    return String(arg)
+                                }
+                            }
+                            return String(arg)
+                        }).join(' ');
+
+                        const logEntry = {
+                            type,
+                            message,
+                            timestamp: Date.now(),
+                            stack    : type === 'error' ? new Error().stack : undefined
+                        };
+
+                        if (client.isConnected) {
+                            client.sendNotification('console_log', logEntry)
+                        } else {
+                            // Direct push to Client instance array
+                            client.logs.push(logEntry)
+                        }
+                    } catch (err) {
+                        // Prevent infinite loop if logging fails
+                    }
+                }
+            }
+        });
+
+        // Intercept unhandled errors
+        const originalOnError = globalThis.onerror;
+
+        globalThis.onerror = (msg, url, lineNo, columnNo, error) => {
+            const client = Neo.ai?.Client;
+
+            if (client) {
+                const logEntry = {
+                    type     : 'error',
+                    message  : msg,
+                    timestamp: Date.now(),
+                    stack    : error?.stack
+                };
+
+                if (client.isConnected) {
+                    client.sendNotification('console_log', logEntry)
+                } else {
+                    client.logs.push(logEntry)
+                }
+            }
+
+            if (originalOnError) {
+                return originalOnError(msg, url, lineNo, columnNo, error)
+            }
+
+            return false
+        }
     }
 
     /**

@@ -1,9 +1,10 @@
 import Base             from '../core/Base.mjs';
 import ClassSystemUtil  from '../util/ClassSystem.mjs';
-import ComponentService from './client/ComponentService.mjs';
-import DataService      from './client/DataService.mjs';
-import RuntimeService   from './client/RuntimeService.mjs';
-import Socket           from '../data/connection/WebSocket.mjs';
+import ComponentService   from './client/ComponentService.mjs';
+import DataService        from './client/DataService.mjs';
+import InteractionService from './client/InteractionService.mjs';
+import RuntimeService     from './client/RuntimeService.mjs';
+import Socket             from '../data/connection/WebSocket.mjs';
 
 /**
  * The AI Client establishes a WebSocket connection to the Neural Link MCP Server.
@@ -43,6 +44,12 @@ class Client extends Base {
      */
     isConnected = false
     /**
+     * Buffer for console logs generated before connection is established
+     * @member {Array} logs=[]
+     * @protected
+     */
+    logs = []
+    /**
      * Map JSON-RPC method prefixes to service instances
      * @member {Object} serviceMap
      * @protected
@@ -68,31 +75,36 @@ class Client extends Base {
         let me = this;
 
         me.services = {
-            component: Neo.create(ComponentService, {client: me}),
-            data     : Neo.create(DataService,      {client: me}),
-            runtime  : Neo.create(RuntimeService,   {client: me})
+            component  : Neo.create(ComponentService,   {client: me}),
+            data       : Neo.create(DataService,        {client: me}),
+            interaction: Neo.create(InteractionService, {client: me}),
+            runtime    : Neo.create(RuntimeService,     {client: me})
         };
 
+        const {component, data, interaction, runtime} = me.services;
+
         me.serviceMap = {
-            get_component       : me.services.component,
-            get_dom_rect        : me.services.component,
-            get_vdom            : me.services.component,
-            get_vnode           : me.services.component,
-            highlight_component : me.services.component,
-            query_component     : me.services.component,
-            set_component       : me.services.component,
+            get_component         : component,
+            get_dom_rect          : component,
+            get_vdom              : component,
+            get_vnode             : component,
+            highlight_component   : component,
+            query_component       : component,
+            set_component         : component,
 
-            get_record          : me.services.data,
-            inspect_state_provider: me.services.data,
-            inspect_store       : me.services.data,
-            list_stores         : me.services.data,
-            modify_state_provider: me.services.data,
+            get_record            : data,
+            inspect_state_provider: data,
+            inspect_store         : data,
+            list_stores           : data,
+            modify_state_provider : data,
 
-            get_drag            : me.services.runtime,
-            get_route           : me.services.runtime,
-            get_window          : me.services.runtime,
-            reload_page         : me.services.runtime,
-            set_route           : me.services.runtime
+            get_dom_event         : runtime,
+            get_drag              : runtime,
+            get_route             : runtime,
+            get_window            : runtime,
+            reload_page           : runtime,
+            set_route             : runtime,
+            simulate_event        : interaction
         };
 
         Neo.currentWorker.on({
@@ -227,6 +239,14 @@ class Client extends Base {
     onSocketOpen(event) {
         console.log('Neo.ai.Client: Connected to MCP Server');
         this.isConnected = true;
+
+        // Flush buffered logs
+        if (this.logs.length > 0) {
+            this.logs.forEach(log => {
+                this.sendNotification('console_log', log)
+            });
+            this.logs.length = 0
+        }
 
         const appWorker = Neo.worker.App;
 
