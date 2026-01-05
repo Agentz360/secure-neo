@@ -61,63 +61,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /db/start:
+  /db/manage:
     post:
-      summary: Start Database
-      operationId: start_database
+      summary: Manage Database
+      operationId: manage_database
       description: |
-        Starts the ChromaDB database instance for the Memory Core as a background process, or connects to an existing one.
+        Manages the lifecycle (start/stop) of the ChromaDB database instance for the Memory Core.
 
         **Behavior:**
-        - **Managed:** If no database is running on the configured port, this tool spawns a new process managed by this server. This process will be automatically cleaned up when the agent session ends.
-        - **External:** If a database is already running (e.g., via `npm run ai:server-memory`), this tool simply confirms the connection. The server acts as a client and will NOT kill the database on exit.
+        - **Start:**
+          - **Managed:** If no database is running on the configured port, this tool spawns a new process managed by this server. This process will be automatically cleaned up when the agent session ends.
+          - **External:** If a database is already running (e.g., via `npm run ai:server-memory`), this tool simply confirms the connection. The server acts as a client and will NOT kill the database on exit.
+        - **Stop:**
+          - **Managed:** Stops the process spawned by this server.
+          - **External:** **No effect.** The server cannot stop a database it did not start.
 
         **Multi-Agent / Swarm Recommendation:**
         For workflows involving multiple concurrent agents, it is **highly recommended** to start the database externally using `npm run ai:server-memory` before starting the agents. This prevents unexpected disconnects for other agents when the "owner" agent exits.
 
         **When to Use:**
-        Use this tool if a `healthcheck` reveals that the database process is not running.
+        - Use `action: start` if a `healthcheck` reveals that the database process is not running.
+        - Use `action: stop` for debugging, forcing a restart, or freeing up resources.
       tags: ["Database Lifecycle"]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [start, stop]
+                  description: The action to perform.
       responses:
         '200':
-          description: The database process was started successfully.
+          description: Operation completed successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatabaseLifecycleResponse'
         '500':
-          description: The database process is already running or failed to start.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /db/stop:
-    post:
-      summary: Stop Database
-      operationId: stop_database
-      description: |
-        Stops the running ChromaDB database instance for the Memory Core.
-
-        **Debug / Maintenance Tool:**
-        This tool is generally **not required** for standard workflows. The server now implements automatic process cleanup (for managed instances) when the session concludes.
-
-        **Effect:**
-        - **Managed:** Stops the process spawned by this server.
-        - **External:** **No effect.** The server cannot stop a database it did not start.
-
-        **When to Use:**
-        Use this only for debugging, forcing a restart, or freeing up resources in a long-running environment where the agent session itself does not exit.
-      tags: ["Database Lifecycle"]
-      responses:
-        '200':
-          description: The database process was stopped successfully.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatabaseLifecycleResponse'
-        '500':
-          description: The database process is not running or failed to stop.
+          description: Operation failed.
           content:
             application/json:
               schema:
@@ -407,94 +394,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /db/export:
-    get:
-      summary: Export Database
-      operationId: export_database
-      x-pass-as-object: true
-      x-annotations:
-        readOnlyHint: true
-      description: |
-        Exports the entire memory database (both memories and summaries) to a JSONL file.
-
-        **When to Use:**
-        For creating backups or migrating memory data between environments.
-      tags: [Database]
-      parameters:
-        - name: include
-          in: query
-          required: false
-          description: Which collections to export
-          schema:
-            type: array
-            items:
-              type: string
-              enum: [memories, summaries]
-            default: [memories, summaries]
-          style: form
-          explode: false
-      responses:
-        '200':
-          description: Database exported successfully
-          content:
-            application/x-jsonlines:
-              schema:
-                type: string
-                format: binary
-        '503':
-          description: Cannot connect to database
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /db/import:
+  /db/backup/manage:
     post:
-      summary: Import Database
-      operationId: import_database
+      summary: Manage Database Backup
+      operationId: manage_database_backup
       x-pass-as-object: true
       description: |
-        Imports a previously exported JSONL file back into the database.
+        Manages database backups (import/export).
 
         **When to Use:**
-        To restore a backup or migrate memory from another environment.
+        - **Export:** For creating backups or migrating memory data between environments.
+        - **Import:** To restore a backup or migrate memory from another environment.
       tags: [Database]
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
               type: object
+              required:
+                - action
               properties:
+                action:
+                  type: string
+                  enum: [import, export]
+                  description: The action to perform.
+                include:
+                  type: array
+                  items:
+                    type: string
+                    enum: [memories, summaries]
+                  default: [memories, summaries]
+                  description: (Export only) Which collections to export.
                 file:
                   type: string
-                  format: binary
-                  description: The JSONL backup file to import
+                  description: (Import only) The absolute path to the JSONL backup file to import.
                 mode:
                   type: string
                   enum: [merge, replace]
                   default: merge
                   description: |
+                    (Import only) Import mode.
                     - merge: Add new records, skip existing IDs
                     - replace: Clear existing data and import
                 reEmbed:
                   type: boolean
                   default: false
                   description: |
-                    If true, ignores stored embeddings and generates new ones using the current model.
-                    Crucial for model migration (e.g., to gemini-embedding-001).
-                    NOTE: This is a slow operation due to rate limiting (batching).
-              required:
-                - file
+                    (Import only) If true, ignores stored embeddings and generates new ones.
       responses:
         '200':
-          description: Import completed successfully
+          description: Operation completed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImportResponse'
+                $ref: '#/components/schemas/BackupActionResponse'
         '400':
-          description: Invalid file or request format
+          description: Invalid request
           content:
             application/json:
               schema:
@@ -971,24 +927,32 @@ components:
           type: string
           example: "All summaries successfully deleted"
 
-    ImportResponse:
+    BackupActionResponse:
       type: object
       properties:
+        message:
+          type: string
+          example: "Database operation completed successfully"
         imported:
           type: integer
-          description: Number of records imported
+          nullable: true
+          description: Number of records imported (Import only)
           example: 150
+        total:
+          type: integer
+          nullable: true
+          description: Total records in collection after operation (Import only)
+          example: 155
         skipped:
           type: integer
-          description: Number of records skipped (if mode=merge)
+          nullable: true
+          description: Number of records skipped (Import only)
           example: 5
         mode:
           type: string
-          enum: [merge, replace]
+          nullable: true
+          description: Import mode used (Import only)
           example: "merge"
-        message:
-          type: string
-          example: "Database import completed successfully"
 
     ErrorResponse:
       type: object

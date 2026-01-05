@@ -26,6 +26,17 @@ class RuntimeService extends Base {
     }
 
     /**
+     * Checks if a namespace exists.
+     * @param {Object} opts            The options object.
+     * @param {String} opts.namespace  The namespace to check.
+     * @param {String} opts.sessionId  The target session ID.
+     * @returns {Promise<Object>}
+     */
+    async checkNamespace({namespace, sessionId}) {
+        return await ConnectionService.call(sessionId, 'check_namespace', {namespace})
+    }
+
+    /**
      * @param {Object} opts             The options object.
      * @param {String} opts.componentId The component ID.
      * @param {String} opts.sessionId   The target session ID.
@@ -45,10 +56,51 @@ class RuntimeService extends Base {
     }
 
     /**
+     * Retrieves the source code of a method.
+     * @param {Object} opts            The options object.
+     * @param {String} opts.className  The fully qualified class name.
+     * @param {String} opts.methodName The name of the method.
+     * @param {String} opts.sessionId  The target session ID.
+     * @returns {Promise<Object>}
+     */
+    async getMethodSource({className, methodName, sessionId}) {
+        return await ConnectionService.call(sessionId, 'get_method_source', {className, methodName})
+    }
+
+    /**
+     * Retrieves the loaded namespace tree.
+     * @param {Object} opts            The options object.
+     * @param {String} [opts.root]     The root namespace.
+     * @param {String} opts.sessionId  The target session ID.
+     * @returns {Promise<Object>}
+     */
+    async getNamespaceTree({root, sessionId}) {
+        return await ConnectionService.call(sessionId, 'get_namespace_tree', {root})
+    }
+
+    /**
+     * Manages the global Neo.config.
+     * @param {Object} opts            The options object.
+     * @param {String} opts.action     'get' | 'set'
+     * @param {Object} [opts.config]   The partial config object (for set action).
+     * @param {String} opts.sessionId  The target session ID.
+     * @param {String} [opts.windowId] Optional window ID (for get action).
+     * @returns {Promise<Object>}
+     */
+    async manageNeoConfig({action, config, sessionId, windowId}) {
+        if (action === 'get') {
+            return await ConnectionService.call(sessionId, 'get_neo_config', {windowId});
+        } else if (action === 'set') {
+            return await ConnectionService.call(sessionId, 'set_neo_config', {config});
+        }
+        throw new Error(`Invalid action: ${action}`);
+    }
+
+    /**
      * Retrieves the navigation history stack.
      * @param {Object} opts            The options object.
      * @param {String} opts.sessionId  The target session ID.
-     * @param {Number} [opts.windowId] Optional window ID.
+     * @param {String} [opts.windowId] Optional window ID.
      * @returns {Promise<Object>}
      */
     async getRouteHistory({sessionId, windowId}) {
@@ -90,11 +142,25 @@ class RuntimeService extends Base {
      * Inspects a Neo.mjs class to retrieve its schema.
      * @param {Object} opts            The options object.
      * @param {String} opts.className  The fully qualified class name.
+     * @param {String} [opts.detail]   The detail level ('standard' or 'compact').
      * @param {String} opts.sessionId  The target session ID.
      * @returns {Promise<Object>}
      */
-    async inspectClass({className, sessionId}) {
-        return await ConnectionService.call(sessionId, 'inspect_class', {className})
+    async inspectClass({className, detail, sessionId}) {
+        return await ConnectionService.call(sessionId, 'inspect_class', {className, detail})
+    }
+
+    /**
+     * Replaces a method implementation on a class prototype at runtime.
+     * @param {Object} opts            The options object.
+     * @param {String} opts.className  The fully qualified class name.
+     * @param {String} opts.methodName The name of the method to patch.
+     * @param {String} opts.sessionId  The target session ID.
+     * @param {String} opts.source     The new function source code.
+     * @returns {Promise<Object>}
+     */
+    async patchCode({className, methodName, sessionId, source}) {
+        return await ConnectionService.call(sessionId, 'patch_code', {className, methodName, source})
     }
 
     /**
@@ -112,7 +178,7 @@ class RuntimeService extends Base {
      * @param {Object} opts            The options object.
      * @param {String} opts.hash       The new hash value.
      * @param {String} opts.sessionId  The target session ID.
-     * @param {Number} [opts.windowId] Optional window ID.
+     * @param {String} [opts.windowId] Optional window ID.
      * @returns {Promise<Object>}
      */
     async setRoute({hash, sessionId, windowId}) {

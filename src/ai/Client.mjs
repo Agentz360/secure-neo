@@ -2,9 +2,11 @@ import Base             from '../core/Base.mjs';
 import ClassSystemUtil  from '../util/ClassSystem.mjs';
 import ComponentService   from './client/ComponentService.mjs';
 import DataService        from './client/DataService.mjs';
+import InstanceService    from './client/InstanceService.mjs';
 import InteractionService from './client/InteractionService.mjs';
 import RuntimeService     from './client/RuntimeService.mjs';
 import Socket             from '../data/connection/WebSocket.mjs';
+import WindowManager      from '../manager/Window.mjs';
 
 /**
  * The AI Client establishes a WebSocket connection to the Neural Link MCP Server.
@@ -33,9 +35,9 @@ class Client extends Base {
         socketConfig: null,
         /**
          * The URL of the Neural Link MCP Server's WebSocket endpoint.
-         * @member {String} url='ws://localhost:8081'
+         * @member {String} url='ws://127.0.0.1:8081'
          */
-        url: 'ws://localhost:8081'
+        url: 'ws://127.0.0.1:8081'
     }
 
     /**
@@ -77,20 +79,27 @@ class Client extends Base {
         me.services = {
             component  : Neo.create(ComponentService,   {client: me}),
             data       : Neo.create(DataService,        {client: me}),
+            instance   : Neo.create(InstanceService,    {client: me}),
             interaction: Neo.create(InteractionService, {client: me}),
             runtime    : Neo.create(RuntimeService,     {client: me})
         };
 
-        const {component, data, interaction, runtime} = me.services;
+        const {component, data, instance, interaction, runtime} = me.services;
 
         me.serviceMap = {
             get_component         : component,
+            get_computed_styles   : component,
             get_dom_rect          : component,
             get_vdom              : component,
+            get_vdom_vnode        : component,
             get_vnode             : component,
             highlight_component   : component,
             query_component       : component,
             set_component         : component,
+
+            find_instances         : instance,
+            get_instance_properties: instance,
+            set_instance_properties: instance,
 
             get_record            : data,
             inspect_state_provider: data,
@@ -100,8 +109,11 @@ class Client extends Base {
 
             get_dom_event         : runtime,
             get_drag              : runtime,
+            get_method_source     : runtime,
             get_route             : runtime,
             get_window            : runtime,
+            inspect_class         : runtime,
+            patch_code            : runtime,
             reload_page           : runtime,
             set_route             : runtime,
             simulate_event        : interaction
@@ -121,30 +133,35 @@ class Client extends Base {
      * Uses Neo.data.connection.WebSocket for robust connection management.
      */
     connect() {
-        let me      = this,
-            url     = new URL(me.url),
-            appName = 'Unknown App';
+        let me = this;
 
-        if (Neo.config.appPath) {
-            const match = Neo.config.appPath.match(/apps\/([^\/]+)\//);
-            if (match) {
-                appName = match[1];
+        try {
+            let url     = new URL(Neo.config.neuralLinkUrl || me.url),
+                appName = 'Unknown App';
+
+            if (Neo.config.appPath) {
+                const match = Neo.config.appPath.match(/apps\/([^\/]+)\//);
+                if (match) {
+                    appName = match[1]
+                }
             }
+
+            url.searchParams.set('appWorkerId', Neo.worker.App.id);
+            url.searchParams.set('appName', appName);
+
+            me.socket = ClassSystemUtil.beforeSetInstance(me.socketConfig, Socket, {
+                serverAddress: url.toString(),
+                listeners    : {
+                    close  : me.onSocketClose,
+                    error  : me.onSocketError,
+                    message: me.onSocketMessage,
+                    open   : me.onSocketOpen,
+                    scope  : me
+                }
+            })
+        } catch (e) {
+            console.error('Neo.ai.Client: Failed to create WebSocket connection', e)
         }
-
-        url.searchParams.set('appWorkerId', Neo.worker.App.id);
-        url.searchParams.set('appName',     appName);
-
-        me.socket = ClassSystemUtil.beforeSetInstance(me.socketConfig, Socket, {
-            serverAddress: url.toString(),
-            listeners    : {
-                close  : me.onSocketClose,
-                error  : me.onSocketError,
-                message: me.onSocketMessage,
-                open   : me.onSocketOpen,
-                scope  : me
-            }
-        })
     }
 
     /**
@@ -193,7 +210,7 @@ class Client extends Base {
     onAppWorkerWindowConnect(data) {
         if (this.isConnected) {
             const
-                win = Neo.manager.Window.get(data.windowId),
+                win = WindowManager.get(data.windowId),
                 {appName, windowId} = data;
 
             this.sendNotification('window_connected', {
@@ -251,7 +268,7 @@ class Client extends Base {
         const appWorker = Neo.worker.App;
 
         // 1. Register the worker
-        this.socket.sendMessage(JSON.stringify({
+        this.socket.sendMessage({
             jsonrpc: '2.0',
             method : 'register',
             params : {
@@ -260,22 +277,18 @@ class Client extends Base {
                 isSharedWorker: appWorker.isSharedWorker,
                 userAgent     : navigator.userAgent
             }
-        }));
+        });
 
         // 2. Rehydrate window topology
-        const windowManager = Neo.manager?.Window;
-
-        if (windowManager) {
-            windowManager.items.forEach(win => {
-                this.sendNotification('window_connected', {
-                    appName  : win.appName,
-                    chrome   : win.chrome,
-                    innerRect: win.innerRect,
-                    outerRect: win.outerRect,
-                    windowId : win.id
-                })
+        WindowManager.items.forEach(win => {
+            this.sendNotification('window_connected', {
+                appName  : win.appName,
+                chrome   : win.chrome,
+                innerRect: win.innerRect,
+                outerRect: win.outerRect,
+                windowId : win.id
             })
-        }
+        })
 
         // 3. Rehydrate drag state (if active)
         const dragCoordinator = Neo.manager?.DragCoordinator;
@@ -311,7 +324,7 @@ class Client extends Base {
      */
     sendError(id, message, stack) {
         if (this.isConnected) {
-            this.socket.sendMessage(JSON.stringify({
+            this.socket.sendMessage({
                 jsonrpc: '2.0',
                 id,
                 error: {
@@ -319,7 +332,7 @@ class Client extends Base {
                     message: message,
                     data   : {stack}
                 }
-            }))
+            })
         }
     }
 
@@ -330,11 +343,11 @@ class Client extends Base {
      */
     sendNotification(method, params) {
         if (this.isConnected) {
-            this.socket.sendMessage(JSON.stringify({
+            this.socket.sendMessage({
                 jsonrpc: '2.0',
                 method,
                 params
-            }))
+            })
         }
     }
 
@@ -345,11 +358,11 @@ class Client extends Base {
      */
     sendResponse(id, result) {
         if (this.isConnected) {
-            this.socket.sendMessage(JSON.stringify({
+            this.socket.sendMessage({
                 jsonrpc: '2.0',
                 id,
                 result
-            }))
+            })
         }
     }
 }

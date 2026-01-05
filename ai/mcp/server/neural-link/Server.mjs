@@ -1,12 +1,12 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import Base from '../../../../src/core/Base.mjs';
-import aiConfig from './config.mjs';
-import logger from './logger.mjs';
-import ConnectionService from './services/ConnectionService.mjs';
-import HealthService from './services/HealthService.mjs';
-import { listTools, callTool } from './services/toolService.mjs';
+import {McpServer}                                     from '@modelcontextprotocol/sdk/server/mcp.js';
+import {StdioServerTransport}                          from '@modelcontextprotocol/sdk/server/stdio.js';
+import {CallToolRequestSchema, ListToolsRequestSchema} from '@modelcontextprotocol/sdk/types.js';
+import Base                                            from '../../../../src/core/Base.mjs';
+import aiConfig                                        from './config.mjs';
+import logger                                          from './logger.mjs';
+import ConnectionService                               from './services/ConnectionService.mjs';
+import HealthService                                   from './services/HealthService.mjs';
+import {listTools, callTool}                           from './services/toolService.mjs';
 
 /**
  * @class Neo.ai.mcp.server.neural-link.Server
@@ -14,9 +14,17 @@ import { listTools, callTool } from './services/toolService.mjs';
  */
 class Server extends Base {
     static config = {
+        /**
+         * @member {String} className='Neo.ai.mcp.server.neural-link.Server'
+         * @protected
+         */
         className: 'Neo.ai.mcp.server.neural-link.Server'
     }
 
+    /**
+     * @member {String|null} bridgeCwd=null
+     */
+    bridgeCwd = null
     /**
      * Path to a custom configuration file.
      * @member {String|null} configFile=null
@@ -57,16 +65,27 @@ class Server extends Base {
         // 3. Setup Handlers
         this.setupRequestHandlers();
 
-        // 4. Wait for Connection Service
-        await ConnectionService.ready();
-
-        // 5. Perform Health Check & Log Status
-        const health = await HealthService.healthcheck();
-        this.logStartupStatus(health);
-
-        // 6. Connect Transport (Stdio)
+        // 4. Connect Transport (Stdio)
+        // We connect early to ensure the MCP client handshake succeeds even if the Bridge is down.
         this.transport = new StdioServerTransport();
         await this.mcpServer.connect(this.transport);
+        logger.info('Neural Link MCP Server transport connected');
+
+        // 5. Wait for Connection Service
+        // This might take time if spawning a new Bridge process
+        try {
+            if (this.bridgeCwd) {
+                ConnectionService.cwd = this.bridgeCwd;
+            }
+            await ConnectionService.ready();
+        } catch (e) {
+            logger.error('ConnectionService failed to initialize:', e);
+            // We do not throw here, so the server stays alive to report health errors
+        }
+
+        // 6. Perform Health Check & Log Status
+        const health = await HealthService.healthcheck();
+        this.logStartupStatus(health);
 
         logger.info('Neural Link MCP Server started');
     }
@@ -78,11 +97,11 @@ class Server extends Base {
     logStartupStatus(health) {
         if (health.status === 'unhealthy') {
             logger.warn('⚠️  [Startup] Neural Link is unhealthy. Server will start but tools will fail until resolved.');
-            health.details.forEach(detail => logger.warn(`    ${detail}`));
+            health.details?.forEach(detail => logger.warn(`    ${detail}`));
         } else {
             logger.info('✅ [Startup] Neural Link health check passed');
-            logger.info(`   - Active Sessions: ${health.session.activeApps}`);
-            logger.info(`   - Connected Windows: ${health.session.connectedWindows}`);
+            logger.info(`   - Active Sessions: ${health.sessions.length}`);
+            logger.info(`   - Connected Windows: ${health.windows.length}`);
         }
     }
 
@@ -114,12 +133,12 @@ class Server extends Base {
                 logger.debug(`[MCP] Calling tool: ${name} with params:`, JSON.stringify(request.params));
 
                 // Health Check Gate
-                const exemptFromHealthCheck = ['healthcheck', 'start_ws_server', 'stop_ws_server'];
+                const exemptFromHealthCheck = ['healthcheck', 'manage_connection'];
 
                 if (!exemptFromHealthCheck.includes(name)) {
                     const health = await HealthService.healthcheck();
                     if (health.status !== 'healthy') {
-                         return {
+                        return {
                             content: [{
                                 type: 'text',
                                 text: `Cannot execute ${name}: Neural Link is unhealthy.\nDetails: ${health.details.join(', ')}`

@@ -35,30 +35,135 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /component/property/get:
+  /check_namespace:
     post:
-      summary: Get Component Property
-      operationId: get_component_property
-      x-pass-as-object: true
-      description: |
-        Retrieves a property from a component by its ID.
-
-        **When to Use:**
-        To inspect the current state of a component (e.g., `width`, `store`, `value`).
-      tags: [Component]
+      summary: Checks if a namespace exists in the current environment.
+      operationId: check_namespace
+      x-handler: check_namespace
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GetComponentPropertyRequest'
+              type: object
+              properties:
+                namespace:
+                  type: string
+                  description: The namespace to check (e.g., 'Neo.button.Base').
+                sessionId:
+                  type: string
+                  description: The target App Worker Session ID.
+              required:
+                - namespace
       responses:
         '200':
-          description: The value of the property
+          description: Result indicating if the namespace exists.
           content:
             application/json:
               schema:
-                description: The property value
+                type: object
+                properties:
+                  exists:
+                    type: boolean
+
+  /instance/find:
+    post:
+      summary: Find Instances
+      operationId: find_instances
+      x-pass-as-object: true
+      description: |
+        Finds instances matching a set of properties.
+        Example: `find_instances({selector: {className: 'Neo.state.Provider'}})`
+
+        **When to Use:**
+        To discover non-component instances (StateProviders, Stores, Managers) by properties or class name.
+      tags: [Instance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FindInstancesRequest'
+      responses:
+        '200':
+          description: List of matching instances
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  instances:
+                    type: array
+                    items:
+                      type: object
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /get_namespace_tree:
+    post:
+      summary: Retrieves the loaded namespace tree from the runtime.
+      operationId: get_namespace_tree
+      x-handler: get_namespace_tree
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                root:
+                  type: string
+                  description: Optional root namespace to start from (defaults to 'Neo').
+                sessionId:
+                  type: string
+                  description: The target App Worker Session ID.
+      responses:
+        '200':
+          description: The namespace tree structure.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  root:
+                    type: string
+                  tree:
+                    type: object
+
+  /instance/properties/get:
+    post:
+      summary: Get Instance Properties
+      operationId: get_instance_properties
+      x-pass-as-object: true
+      description: |
+        Retrieves properties from a specific instance by its ID.
+
+        **When to Use:**
+        To inspect the current state of any Neo instance (e.g., Component, Store, Controller, Manager).
+      tags: [Instance]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetInstancePropertiesRequest'
+      responses:
+        '200':
+          description: The values of the properties
+          content:
+            application/json:
+              schema:
+                description: The property values
         '400':
           description: Invalid request body
           content:
@@ -276,61 +381,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /component/vdom/get:
+  /component/render-tree/inspect:
     post:
-      summary: Get Component VDOM Tree
-      operationId: get_vdom_tree
+      summary: Inspect Component Render Tree
+      operationId: inspect_component_render_tree
       x-pass-as-object: true
       description: |
-        Retrieves the VDOM tree of a component.
+        Retrieves the render tree (VDOM/VNode) of a component.
 
         **When to Use:**
-        To inspect the Virtual DOM structure of a component for rendering issues.
+        To inspect the Virtual DOM (VDOM) structure, the actual DOM-aligned VNodes, or both for debugging rendering issues.
       tags: [Component]
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GetComponentTreeRequest'
+              type: object
+              required:
+                - type
+              properties:
+                type:
+                  type: string
+                  enum: [vdom, vnode, both]
+                  description: "The type of tree to retrieve."
+                rootId:
+                  type: string
+                  description: Optional root component ID. Defaults to the App's MainView if available.
+                depth:
+                  type: integer
+                  description: Depth limit. 1=Self, 2=Self+Children, -1=Infinite.
+                sessionId:
+                  type: string
+                  description: The target App Worker Session ID.
       responses:
         '200':
-          description: The VDOM tree structure
-          content:
-            application/json:
-              schema:
-                type: object
-        '400':
-          description: Invalid request body
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /component/vnode/get:
-    post:
-      summary: Get Component VNode Tree
-      operationId: get_vnode_tree
-      x-pass-as-object: true
-      description: |
-        Retrieves the VNode tree of a component.
-
-        **When to Use:**
-        To inspect the actual DOM-aligned VNodes (after VDOM processing). Useful for deep rendering debugging.
-      tags: [Component]
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GetComponentTreeRequest'
-      responses:
-        '200':
-          description: The VNode tree structure
+          description: The requested tree structure(s)
           content:
             application/json:
               schema:
@@ -680,51 +766,46 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /server/start:
+  /connection/manage:
     post:
-      summary: Start WebSocket Server
-      operationId: start_ws_server
+      summary: Manage WebSocket Server
+      operationId: manage_connection
+      x-pass-as-object: true
       description: |
-        Starts the WebSocket server to accept connections from the Neo.mjs app.
+        Manages the WebSocket server connection (start/stop).
 
         **When to Use:**
-        Use this to recover the bridge if the server was previously stopped or crashed.
+        Use this to recover the bridge if the server was previously stopped or crashed, or to simulate a disconnect.
       tags: [Lifecycle]
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
-              properties: {}
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [start, stop]
+                  description: "The action to perform: 'start' to launch the server, 'stop' to shut it down."
       responses:
         '200':
-          description: Server started successfully
-        '500':
-          description: Internal server error
+          description: Action completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Invalid request body
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
-  /server/stop:
-    post:
-      summary: Stop WebSocket Server
-      operationId: stop_ws_server
-      description: |
-        Stops the WebSocket server and closes all active connections.
-
-        **When to Use:**
-        Use this to simulate a network disconnect or to perform a clean shutdown of the bridge.
-      tags: [Lifecycle]
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties: {}
-      responses:
-        '200':
-          description: Server stopped successfully
         '500':
           description: Internal server error
           content:
@@ -855,26 +936,26 @@ paths:
                     chrome:
                       type: object
 
-  /component/property/set:
+  /instance/properties/set:
     post:
-      summary: Set Component Property
-      operationId: set_component_property
+      summary: Set Instance Properties
+      operationId: set_instance_properties
       x-pass-as-object: true
       description: |
-        Sets a property on a component by its ID.
+        Sets properties on a specific instance by its ID.
 
         **When to Use:**
-        To modify the runtime state of a component (e.g., change text, toggle visibility).
-      tags: [Component]
+        To modify the runtime state of an instance (e.g., change component text, update store filter).
+      tags: [Instance]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SetComponentPropertyRequest'
+              $ref: '#/components/schemas/SetInstancePropertiesRequest'
       responses:
         '200':
-          description: Property set successfully
+          description: Properties set successfully
         '400':
           description: Invalid request body
           content:
@@ -955,6 +1036,145 @@ paths:
               schema:
                 type: object
 
+  /code/source/get:
+    post:
+      summary: Get Method Source
+      operationId: get_method_source
+      x-pass-as-object: true
+      description: |
+        Retrieves the source code of a class method.
+
+        **When to Use:**
+        To inspect the current implementation of a method before hot-patching it.
+      tags: [Runtime]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetMethodSourceRequest'
+      responses:
+        '200':
+          description: Source code retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  source:
+                    type: string
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /code/patch:
+    post:
+      summary: Patch Code
+      operationId: patch_code
+      x-pass-as-object: true
+      description: |
+        Replaces a method implementation on a class prototype at runtime.
+        **Requires** `Neo.config.enableHotPatching = true`.
+
+        **Best Practice:**
+        Always use `get_method_source` first to retrieve the current implementation before creating a patch. This ensures you are modifying the correct version of the code.
+
+        **When to Use:**
+        To hot-patch a bug in a live application without reloading.
+      tags: [Runtime]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchCodeRequest'
+      responses:
+        '200':
+          description: Patch successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /runtime/config/manage:
+    post:
+      summary: Manage Neo Config
+      operationId: manage_neo_config
+      x-pass-as-object: true
+      description: |
+        Manages the global Neo.config object (get/set).
+
+        **When to Use:**
+        To inspect or modify the global configuration of the framework at runtime.
+      tags: [Configuration]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [get, set]
+                  description: "The action to perform: 'get' to retrieve, 'set' to update."
+                config:
+                  type: object
+                  description: "The partial config object to merge (required for 'set')."
+                windowId:
+                  type: string
+                  description: "Optional window ID to retrieve specific boot config (only for 'get')."
+                sessionId:
+                  type: string
+                  description: The target App Worker Session ID.
+      responses:
+        '200':
+          description: Configuration result
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /interaction/simulate_event:
     post:
       summary: Simulate DOM Event
@@ -1012,18 +1232,35 @@ components:
               type: string
             port:
               type: integer
-        session:
-          type: object
-          properties:
-            activeApps:
-              type: integer
-            connectedWindows:
-              type: integer
-            agents:
-              type: array
-              items:
+        sessions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
                 type: string
-        details:
+              connectedAt:
+                type: number
+              activeApps:
+                type: integer
+        windows:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              appName:
+                type: string
+              width:
+                type: number
+              height:
+                type: number
+              x:
+                type: number
+              y:
+                type: number
+        agents:
           type: array
           items:
             type: string
@@ -1032,18 +1269,37 @@ components:
         uptime:
           type: number
 
-    GetComponentPropertyRequest:
+    FindInstancesRequest:
+      type: object
+      required:
+        - selector
+      properties:
+        selector:
+          type: object
+          description: "JSON object with property/value pairs to match (e.g., {className: 'Neo.state.Provider'})."
+        returnProperties:
+          type: array
+          items:
+            type: string
+          description: "Optional list of properties to return. If provided, returns a lean response (id, className, properties)."
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    GetInstancePropertiesRequest:
       type: object
       required:
         - id
-        - property
+        - properties
       properties:
         id:
           type: string
-          description: The component ID
-        property:
-          type: string
-          description: The property name to retrieve
+          description: The instance ID
+        properties:
+          type: array
+          items:
+            type: string
+          description: List of property names to retrieve
         sessionId:
           type: string
           description: The target App Worker Session ID
@@ -1110,6 +1366,11 @@ components:
         rootId:
           type: string
           description: Optional ID of a component to search within (scoped search).
+        returnProperties:
+          type: array
+          items:
+            type: string
+          description: "Optional list of properties to return. If provided, returns a lean response (id, className, properties) instead of the full component serialization."
         sessionId:
           type: string
           description: The target App Worker Session ID
@@ -1152,7 +1413,7 @@ components:
       type: object
       properties:
         windowId:
-          type: integer
+          type: string
           description: Optional window ID to get history for.
         sessionId:
           type: string
@@ -1167,27 +1428,24 @@ components:
           type: string
           description: The new hash value to set (e.g., "#mainview=home").
         windowId:
-          type: integer
+          type: string
           description: Optional window ID to target.
         sessionId:
           type: string
           description: The target App Worker Session ID
 
-    SetComponentPropertyRequest:
+    SetInstancePropertiesRequest:
       type: object
       required:
         - id
-        - property
-        - value
+        - properties
       properties:
         id:
           type: string
-          description: The component ID
-        property:
-          type: string
-          description: The property name to set
-        value:
-          description: The value to set
+          description: The instance ID
+        properties:
+          type: object
+          description: Key-value pairs of properties to set
         sessionId:
           type: string
           description: The target App Worker Session ID
@@ -1295,6 +1553,47 @@ components:
         className:
           type: string
           description: The fully qualified class name (e.g., "Neo.button.Base").
+        detail:
+          type: string
+          enum: [standard, compact]
+          default: standard
+          description: Level of detail to return. 'compact' returns only own configs/methods. 'standard' returns full inheritance.
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    GetMethodSourceRequest:
+      type: object
+      required:
+        - className
+        - methodName
+      properties:
+        className:
+          type: string
+          description: The fully qualified class name.
+        methodName:
+          type: string
+          description: The name of the method.
+        sessionId:
+          type: string
+          description: The target App Worker Session ID
+
+    PatchCodeRequest:
+      type: object
+      required:
+        - className
+        - methodName
+        - source
+      properties:
+        className:
+          type: string
+          description: The fully qualified class name.
+        methodName:
+          type: string
+          description: The name of the method to patch.
+        source:
+          type: string
+          description: "The new function source code (e.g., 'function(args) { ... }')."
         sessionId:
           type: string
           description: The target App Worker Session ID

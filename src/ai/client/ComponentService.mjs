@@ -1,4 +1,5 @@
-import Service from './Service.mjs';
+import Service     from './Service.mjs';
+import TreeBuilder from '../../util/vdom/TreeBuilder.mjs';
 
 /**
  * Handles component-related Neural Link requests.
@@ -12,18 +13,6 @@ class ComponentService extends Service {
          * @protected
          */
         className: 'Neo.ai.client.ComponentService'
-    }
-
-    /**
-     * @param {Object} params
-     * @param {String} params.id
-     * @param {String} params.property
-     * @returns {Object}
-     */
-    getComponentProperty({id, property}) {
-        const component = Neo.getComponent(id);
-        if (!component) throw new Error(`Component not found: ${id}`);
-        return {value: this.safeSerialize(component[property])};
     }
 
     /**
@@ -124,34 +113,52 @@ class ComponentService extends Service {
 
     /**
      * @param {Object} params
+     * @param {Number} [params.depth]
      * @param {String} [params.rootId]
      * @returns {Object}
      */
-    getVdomTree({rootId}) {
+    getVdomTree({depth, rootId}) {
         const component = this.getComponentRoot(rootId);
         if (!component) throw new Error('Root component not found');
-        return {vdom: component.vdom}
+        return {vdom: TreeBuilder.getVdomTree(component.vdom, depth)}
     }
 
     /**
      * @param {Object} params
+     * @param {Number} [params.depth]
      * @param {String} [params.rootId]
      * @returns {Object}
      */
-    getVnodeTree({rootId}) {
+    getVnodeTree({depth, rootId}) {
         const component = this.getComponentRoot(rootId);
         if (!component) throw new Error('Root component not found');
-        return {vnode: component.vnode}
+        return {vnode: TreeBuilder.getVnodeTree(component.vnode, depth)}
     }
 
     /**
      * @param {Object} params
+     * @param {Number} [params.depth]
      * @param {String} [params.rootId]
-     * @param {Object} params.selector
      * @returns {Object}
      */
-    queryComponent({rootId, selector}) {
-        let matches = [];
+    getVdomVnode({depth, rootId}) {
+        const component = this.getComponentRoot(rootId);
+        if (!component) throw new Error('Root component not found');
+        return {
+            vdom : TreeBuilder.getVdomTree(component.vdom, depth),
+            vnode: TreeBuilder.getVnodeTree(component.vnode, depth)
+        }
+    }
+
+    /**
+     * @param {Object}   params
+     * @param {String}   [params.rootId]
+     * @param {Object}   params.selector
+     * @param {String[]} [params.returnProperties]
+     * @returns {Object}
+     */
+    queryComponent({rootId, selector, returnProperties}) {
+        let matches;
 
         if (rootId) {
             const component = Neo.getComponent(rootId);
@@ -161,27 +168,24 @@ class ComponentService extends Service {
             matches = Neo.manager.Component.find(selector)
         }
 
-        if (!Array.isArray(matches)) {
-            matches = matches ? [matches] : []
-        }
+        const components = matches.map(c => {
+            if (Array.isArray(returnProperties) && returnProperties.length > 0) {
+                const props = {};
+                returnProperties.forEach(prop => {
+                    props[prop] = this.safeSerialize(c[prop])
+                });
 
-        return {
-            components: matches.map(c => c.toJSON())
-        }
-    }
+                return {
+                    className : c.className,
+                    id        : c.id,
+                    properties: props
+                }
+            }
 
-    /**
-     * @param {Object} params
-     * @param {String} params.id
-     * @param {String} params.property
-     * @param {*}      params.value
-     * @returns {Object}
-     */
-    setComponentProperty({id, property, value}) {
-        const component = Neo.getComponent(id);
-        if (!component) throw new Error(`Component not found: ${id}`);
-        component[property] = value;
-        return {success: true}
+            return c.toJSON()
+        });
+
+        return {components}
     }
 
     /**

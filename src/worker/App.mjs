@@ -500,6 +500,10 @@ class App extends Base {
      * @param {Object} data
      */
     async onConnect(data) {
+        if (this.aiClientPromise) {
+            await this.aiClientPromise
+        }
+
         // short delay to ensure app VCs are in place
         await this.timeout(10);
 
@@ -584,7 +588,7 @@ class App extends Base {
 
         Neo.windowConfigs = Neo.windowConfigs || {};
 
-        Neo.windowConfigs[data.windowId] = data;
+        Neo.windowConfigs[data.windowId] = Neo.clone(data, true);
 
         if (config.environment === 'development' || config.environment === 'dist/esm') {
             url = `../../${url}`
@@ -602,8 +606,25 @@ class App extends Base {
             .then(response => response.json())
             .then(data => {this.createThemeMap(data)});
 
-        config.remotesApiUrl  && import('../remotes/Api.mjs').then(module => module.default.load());
-        config.useAiClient    && import('../ai/Client.mjs');
+        config.remotesApiUrl && import('../remotes/Api.mjs').then(module => module.default.load());
+
+        if (config.useAiClient) {
+            let {environment, useAiClient} = config,
+                useAi                      = useAiClient === true;
+
+            if (!useAi) {
+                if (Array.isArray(useAiClient)) {
+                    useAi = useAiClient.includes(environment)
+                } else if (typeof useAiClient === 'string') {
+                    useAi = useAiClient === environment
+                }
+            }
+
+            if (useAi) {
+                this.aiClientPromise = import('../ai/Client.mjs')
+            }
+        }
+
         !config.useVdomWorker && import('../vdom/Helper.mjs')
     }
 

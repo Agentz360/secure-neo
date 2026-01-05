@@ -1,3 +1,4 @@
+import aiConfig  from '../config.mjs';
 import {spawn}   from 'child_process';
 import crypto    from 'crypto';
 import fs        from 'fs';
@@ -29,6 +30,10 @@ class ConnectionService extends Base {
          * @protected
          */
         className: 'Neo.ai.mcp.server.neural-link.services.ConnectionService',
+        /**
+         * @member {String|null} cwd=null @protected
+         */
+        cwd: null,
         /**
          * @member {Number} port=8081
          * @protected
@@ -120,14 +125,14 @@ class ConnectionService extends Base {
         logger.info(`[ConnectionService] Sending call ${id} to ${sessionId}: ${method}`);
 
         return new Promise((resolve, reject) => {
-            // Timeout after 30s
+            // Timeout after configured time
             const timeout = setTimeout(() => {
                 if (this.pendingRequests.has(id)) {
                     this.pendingRequests.delete(id);
                     logger.error(`[ConnectionService] Call ${id} timed out`);
                     reject(new Error('Request timed out'));
                 }
-            }, 30000);
+            }, aiConfig.rpcTimeout);
 
             this.pendingRequests.set(id, {resolve, reject, timeout});
 
@@ -141,7 +146,7 @@ class ConnectionService extends Base {
      */
     async connectToBridge() {
         return new Promise((resolve, reject) => {
-            const url = `ws://localhost:${this.port}?role=agent&id=${this.agentId}`;
+            const url = `ws://127.0.0.1:${this.port}?role=agent&id=${this.agentId}`;
             const ws  = new WebSocket(url);
 
             ws.on('open', () => {
@@ -179,7 +184,8 @@ class ConnectionService extends Base {
             await this.connectToBridge();
             connected = true;
         } catch (e) {
-            logger.info('Bridge not running. Spawning new Bridge process...');
+            logger.info('Failed to connect to existing bridge:', e.message);
+            logger.info('Assuming Bridge not running. Spawning new Bridge process...');
         }
 
         // 2. Spawn if missing
@@ -230,18 +236,33 @@ class ConnectionService extends Base {
      * @returns {Object}
      */
     getStatus() {
-        const windows = [];
+        const
+            sessions = [],
+            windows  = [];
 
-        for (const meta of this.sessionData.values()) {
+        for (const [id, meta] of this.sessionData.entries()) {
+            sessions.push({
+                id,
+                connectedAt: meta.connectedAt,
+                activeApps : meta.windows ? meta.windows.size : 0
+            });
+
             if (meta.windows) {
                 for (const win of meta.windows.values()) {
-                    windows.push(win)
+                    windows.push({
+                        id     : win.windowId,
+                        appName: win.appName,
+                        width  : win.outerRect?.width,
+                        height : win.outerRect?.height,
+                        x      : win.outerRect?.x,
+                        y      : win.outerRect?.y
+                    })
                 }
             }
         }
 
         return {
-            sessions       : this.sessionData.size,
+            sessions,
             windows,
             bridgeConnected: !!this.bridgeSocket,
             agentId        : this.agentId,
@@ -396,6 +417,46 @@ class ConnectionService extends Base {
     }
 
     /**
+     * Tool handler: Manages the WebSocket server connection.
+     * @param {Object} opts
+     * @param {String} opts.action 'start' | 'stop'
+     * @returns {Promise<Object>}
+     */
+    async manageConnection({action}) {
+        logger.info(`Tool: manage_connection called with action=${action}`);
+
+        if (action === 'start') {
+            await this.ensureBridgeAndConnect();
+            const status = this.getStatus();
+
+            if (status.bridgeConnected) {
+                return {message: 'Neural Link Bridge started and connected successfully.'};
+            } else {
+                throw new Error('Failed to connect to Neural Link Bridge after spawn attempt.');
+            }
+        } else if (action === 'stop') {
+            // 1. Disconnect Client
+            if (this.bridgeSocket) {
+                this.bridgeSocket.close();
+                this.bridgeSocket = null;
+            }
+
+            // 2. Kill Process
+            if (this.bridgeProcess) {
+                this.bridgeProcess.kill();
+                this.bridgeProcess = null;
+                logger.info('Bridge process terminated.');
+                return {message: 'Neural Link Bridge stopped.'};
+            } else {
+                logger.warn('No managed Bridge process found. Server might have been started externally.');
+                return {message: 'Disconnected. Bridge process was not managed by this session (not killed).'};
+            }
+        }
+
+        throw new Error(`Invalid action: ${action}`);
+    }
+
+    /**
      * Resolves a pending RPC request.
      * @param {Object} message
      */
@@ -419,11 +480,11 @@ class ConnectionService extends Base {
      */
     async spawnBridge() {
         return new Promise((resolve, reject) => {
-            const args = ['run', 'ai:server-neural-link'];
+            const args    = ['run', 'ai:server-neural-link'];
             const logFile = fs.openSync('./bridge.log', 'a');
 
             this.bridgeProcess = spawn('npm', args, {
-                cwd     : process.cwd(),
+                cwd     : this.cwd || process.cwd(),
                 detached: true,
                 stdio   : ['ignore', logFile, logFile]
             });
@@ -433,48 +494,6 @@ class ConnectionService extends Base {
             // Give it a moment to start
             setTimeout(resolve, 2000);
         });
-    }
-
-    /**
-     * Tool handler: Starts the standalone Bridge process (if not running) and connects to it.
-     * @returns {Promise<Object>}
-     */
-    async startServer() {
-        logger.info('Tool: start_ws_server called. Ensuring Bridge is running...');
-        await this.ensureBridgeAndConnect();
-
-        const status = this.getStatus();
-
-        if (status.bridgeConnected) {
-            return {message: 'Neural Link Bridge started and connected successfully.'};
-        } else {
-            throw new Error('Failed to connect to Neural Link Bridge after spawn attempt.');
-        }
-    }
-
-    /**
-     * Tool handler: Stops the standalone Bridge process and disconnects.
-     * @returns {Promise<Object>}
-     */
-    async stopServer() {
-        logger.info('Tool: stop_ws_server called. Stopping Bridge...');
-
-        // 1. Disconnect Client
-        if (this.bridgeSocket) {
-            this.bridgeSocket.close();
-            this.bridgeSocket = null;
-        }
-
-        // 2. Kill Process
-        if (this.bridgeProcess) {
-            this.bridgeProcess.kill();
-            this.bridgeProcess = null;
-            logger.info('Bridge process terminated.');
-            return {message: 'Neural Link Bridge stopped.'};
-        } else {
-            logger.warn('No managed Bridge process found. Server might have been started externally.');
-            return {message: 'Disconnected. Bridge process was not managed by this session (not killed).'};
-        }
     }
 }
 

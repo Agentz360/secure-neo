@@ -17,6 +17,18 @@ class RuntimeService extends Service {
     }
 
     /**
+     * Checks if a namespace exists in the current environment.
+     * @param {Object} params
+     * @param {String} params.namespace
+     * @returns {Object} {exists: Boolean}
+     */
+    checkNamespace({namespace}) {
+        return {
+            exists: !!Neo.ns(namespace)
+        }
+    }
+
+    /**
      * @param {Object} params
      * @param {String} params.componentId
      * @returns {Object}
@@ -88,8 +100,76 @@ class RuntimeService extends Service {
     }
 
     /**
+     * Retrieves the source code of a method on a class prototype.
      * @param {Object} params
-     * @param {Number} [params.windowId]
+     * @param {String} params.className  The fully qualified class name.
+     * @param {String} params.methodName The name of the method.
+     * @returns {Object} {success: Boolean, source?: String, error?: String}
+     */
+    getMethodSource({className, methodName}) {
+        const cls = Neo.ns(className);
+
+        if (!cls) {
+            return {success: false, error: `Class '${className}' not found`}
+        }
+
+        const type = Neo.typeOf(cls);
+        let proto;
+
+        if (type === 'NeoClass') {
+            proto = cls.prototype
+        } else if (type === 'NeoInstance') {
+            proto = cls.constructor.prototype
+        } else {
+            return {success: false, error: `Target '${className}' is not a Neo class or instance`}
+        }
+
+        if (typeof proto[methodName] !== 'function') {
+            return {success: false, error: `Method '${methodName}' not found on '${className}'`}
+        }
+
+        return {
+            success: true,
+            source : proto[methodName].toString()
+        }
+    }
+
+    /**
+     * Retrieves the loaded namespace tree.
+     * @param {Object} params
+     * @param {String} [params.root='Neo'] The root namespace to start from (e.g., 'Neo', 'MyApp').
+     * @returns {Object}
+     */
+    getNamespaceTree({root='Neo'}) {
+        const
+            me        = this,
+            startNode = Neo.ns(root),
+            tree      = {};
+
+        if (!startNode) {
+            return {tree: {}, error: `Namespace '${root}' not found`}
+        }
+
+        me.#traverseNamespace(startNode, root, tree);
+
+        return {root, tree}
+    }
+
+    /**
+     * @param {Object} params
+     * @param {String} [params.windowId]
+     * @returns {Object}
+     */
+    getNeoConfig({windowId}) {
+        if (windowId) {
+            return Neo.windowConfigs?.[windowId] || null
+        }
+        return Neo.config
+    }
+
+    /**
+     * @param {Object} params
+     * @param {String} [params.windowId]
      * @returns {Object}
      */
     getRouteHistory({windowId}) {
@@ -120,9 +200,10 @@ class RuntimeService extends Service {
      * Inspects a class to retrieve its full schema (configs, methods, hierarchy).
      * @param {Object} params
      * @param {String} params.className
+     * @param {String} [params.detail='standard'] 'standard' | 'compact'
      * @returns {Object}
      */
-    inspectClass({className}) {
+    inspectClass({className, detail='standard'}) {
         const cls = Neo.ns(className);
 
         if (!cls) {
@@ -163,8 +244,19 @@ class RuntimeService extends Service {
         // Serialize the default values first
         const defaultValues = this.serializeConfig(ctor.config);
 
+        // Get superclass config for comparison in compact mode
+        const
+            superCtor   = ctor.__proto__,
+            superConfig = superCtor?.config || {};
+
         // Process Configs
         Object.keys(defaultValues).forEach(key => {
+            // In compact mode, only include configs that are "own" (not in super or changed)
+            if (detail === 'compact') {
+                const isOwn = !Object.hasOwn(superConfig, key) || superConfig[key] !== ctor.config[key];
+                if (!isOwn) return
+            }
+
             configs[key] = {
                 value: defaultValues[key]
             };
@@ -178,8 +270,15 @@ class RuntimeService extends Service {
             const hooks = [];
             ['beforeGet', 'beforeSet', 'afterSet'].forEach(prefix => {
                 const hookName = getHookName(prefix, key);
-                if (typeof proto[hookName] === 'function') {
-                    hooks.push(prefix)
+                // In compact mode, only check for hooks on the current prototype
+                if (detail === 'compact') {
+                    if (Object.hasOwn(proto, hookName)) {
+                        hooks.push(prefix)
+                    }
+                } else {
+                    if (typeof proto[hookName] === 'function') {
+                        hooks.push(prefix)
+                    }
                 }
             });
 
@@ -215,6 +314,12 @@ class RuntimeService extends Service {
                     }
                 }
             });
+
+            // In compact mode, we only look at the top-level prototype
+            if (detail === 'compact') {
+                break
+            }
+
             currentProto = currentProto.__proto__
         }
 
@@ -230,6 +335,74 @@ class RuntimeService extends Service {
     }
 
     /**
+     * Replaces a method implementation on a class prototype at runtime.
+     * RESTRICTED: Requires Neo.config.enableHotPatching = true.
+     *
+     * @param {Object} params
+     * @param {String} params.className  The fully qualified class name (e.g., 'Neo.button.Base')
+     * @param {String} params.methodName The name of the method to patch
+     * @param {String} params.source     The new function source code (e.g., 'function(args) { ... }' or 'async (args) => { ... }')
+     * @returns {Object} {success: Boolean, error?: String}
+     */
+    patchCode({className, methodName, source}) {
+        if (Neo.config.enableHotPatching !== true) {
+            return {
+                success: false,
+                error  : 'Hot patching is disabled. Set Neo.config.enableHotPatching = true to enable.'
+            }
+        }
+
+        const cls = Neo.ns(className);
+
+        if (!cls) {
+            return {
+                success: false,
+                error  : `Class '${className}' not found`
+            }
+        }
+
+        if (!cls.prototype) {
+            return {
+                success: false,
+                error  : `Class '${className}' has no prototype (is it a singleton?)`
+            }
+        }
+
+        try {
+            // Use new Function to parse the source code safely into a function object.
+            // This avoids direct use of eval() and ensures the code runs in the global scope.
+            // eslint-disable-next-line no-new-func
+            const fn = new Function('return ' + source)();
+
+            if (typeof fn !== 'function') {
+                return {
+                    success: false,
+                    error  : 'Source did not evaluate to a function'
+                }
+            }
+
+            // 1. Log the patch for audit
+            console.warn(`[Neo.ai.client.RuntimeService] Hot-patching ${className}.prototype.${methodName}`);
+
+            // 2. Apply the patch
+            cls.prototype[methodName] = fn;
+
+            // 3. Mark method as patched (useful for debugging)
+            fn.$isPatched = true;
+            fn.$originalSource = source;
+
+            return {success: true}
+
+        } catch (e) {
+            console.error('[Neo.ai.client.RuntimeService] Hot patch failed:', e);
+            return {
+                success: false,
+                error  : e.message
+            }
+        }
+    }
+
+    /**
      * @param {Object} params
      * @returns {Object}
      */
@@ -240,8 +413,18 @@ class RuntimeService extends Service {
 
     /**
      * @param {Object} params
+     * @param {Object} params.config
+     * @returns {Object}
+     */
+    setNeoConfig({config}) {
+        Neo.setGlobalConfig(config);
+        return {status: 'ok'}
+    }
+
+    /**
+     * @param {Object} params
      * @param {String} params.hash
-     * @param {Number} [params.windowId]
+     * @param {String} [params.windowId]
      * @returns {Object}
      */
     setRoute({hash, windowId}) {
@@ -251,6 +434,42 @@ class RuntimeService extends Service {
         });
 
         return {status: 'ok', hash}
+    }
+
+    /**
+     * @param {Object} node
+     * @param {String} path
+     * @param {Object} output
+     */
+    #traverseNamespace(node, path, output) {
+        Object.keys(node).forEach(key => {
+            const
+                value       = node[key],
+                type        = Neo.typeOf(value),
+                currentPath = path ? `${path}.${key}` : key;
+
+            if (type === 'NeoClass') {
+                output[key] = {
+                    type     : 'class',
+                    className: value.prototype.className
+                }
+            } else if (type === 'NeoInstance') {
+                output[key] = {
+                    type     : 'singleton',
+                    className: value.className
+                }
+            } else if (type === 'Object') {
+                // Only traverse plain objects (namespaces)
+                // Neo.typeOf returns 'Object' for plain objects
+                output[key] = {};
+                this.#traverseNamespace(value, currentPath, output[key]);
+
+                // Clean up empty packages
+                if (Object.keys(output[key]).length === 0) {
+                    delete output[key]
+                }
+            }
+        })
     }
 }
 
