@@ -629,16 +629,19 @@ class Base {
             {currentWorker}     = Neo;
 
         if (!Neo.config.isMiddleware && !Neo.config.unitTestMode) {
-            if (Neo.workerId !== 'main' && currentWorker.isSharedWorker && !currentWorker.isConnected) {
-                await new Promise(resolve => {
-                    currentWorker.on('connected', async () => {
-                        await Base.promiseRemotes(className, remote);
-                        resolve()
-                    }, this, {once: true})
-                })
-            } else {
-                await Base.promiseRemotes(className, remote)
+            if (Neo.workerId !== 'main' && currentWorker.isSharedWorker) {
+                if (remote.main) {
+                    currentWorker.remotesToRegister.push({className, methods: remote.main})
+                }
+
+                if (!currentWorker.isConnected) {
+                    await new Promise(resolve => {
+                        currentWorker.on('connected', () => resolve(), this, {once: true})
+                    })
+                }
             }
+
+            await Base.promiseRemotes(className, remote)
         }
     }
 
@@ -1054,6 +1057,27 @@ class Base {
     }
 
     /**
+     * Recursive helper to extract all mixin classes from the mixins object
+     * @param {Object} [obj=this.mixins]
+     * @param {Array} [res=[]]
+     * @returns {Array}
+     * @protected
+     */
+    getMixins(obj=this.mixins, res=[]) {
+        if (obj) {
+            Object.values(obj).forEach(value => {
+                if (value && value.prototype) {
+                    res.push(value)
+                } else if (Neo.isObject(value)) {
+                    this.getMixins(value, res)
+                }
+            })
+        }
+
+        return res
+    }
+
+    /**
      * Serializes the instance into a JSON-compatible object for the Neural Link.
      * Subclasses should override this to include their specific relevant state.
      * @returns {Object}
@@ -1061,12 +1085,38 @@ class Base {
     toJSON() {
         let me = this;
 
-        return {
-            className  : me.className,
-            id         : me.id,
-            isDestroyed: me.isDestroyed,
-            ntype      : me.ntype,
-            remote     : me.remote
+        // Recursion guard: If a mixin calls super.toJSON(), it hits this method again.
+        // We return the base object to break the loop.
+        if (me.__inToJSON) {
+            return {
+                className  : me.className,
+                id         : me.id,
+                isDestroyed: me.isDestroyed,
+                ntype      : me.ntype,
+                remote     : me.remote
+            }
+        }
+
+        me.__inToJSON = true;
+
+        try {
+            let out = {
+                className  : me.className,
+                id         : me.id,
+                isDestroyed: me.isDestroyed,
+                ntype      : me.ntype,
+                remote     : me.remote
+            };
+
+            me.getMixins().forEach(mixin => {
+                if (mixin.prototype.toJSON) {
+                    Object.assign(out, mixin.prototype.toJSON.call(me))
+                }
+            });
+
+            return out
+        } finally {
+            delete me.__inToJSON
         }
     }
 

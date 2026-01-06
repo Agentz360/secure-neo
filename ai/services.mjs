@@ -16,6 +16,8 @@ import GH_LocalFileService          from './mcp/server/github-workflow/services/
 import GH_PullRequestService        from './mcp/server/github-workflow/services/PullRequestService.mjs';
 import GH_RepositoryService         from './mcp/server/github-workflow/services/RepositoryService.mjs';
 
+GH_Config.data.syncOnStartup = false;
+
 // --- Knowledge Base Services ---
 import KB_DatabaseService           from './mcp/server/knowledge-base/services/DatabaseService.mjs';
 import KB_LifecycleService          from './mcp/server/knowledge-base/services/DatabaseLifecycleService.mjs';
@@ -24,6 +26,9 @@ import KB_HealthService             from './mcp/server/knowledge-base/services/H
 import KB_QueryService              from './mcp/server/knowledge-base/services/QueryService.mjs';
 import KB_ChromaManager             from './mcp/server/knowledge-base/services/ChromaManager.mjs';
 import KB_Config                    from './mcp/server/knowledge-base/config.mjs';
+
+// Disable auto-sync for all scripts using the SDK to prevent double-runs
+KB_Config.data.autoSync = false;
 
 // --- Memory Core Services ---
 import Memory_Service               from './mcp/server/memory-core/services/MemoryService.mjs';
@@ -35,8 +40,16 @@ import Memory_SummaryService        from './mcp/server/memory-core/services/Summ
 import Memory_ChromaManager         from './mcp/server/memory-core/services/ChromaManager.mjs';
 import Memory_Config                from './mcp/server/memory-core/config.mjs';
 
+Memory_Config.data.autoSummarize = false;
+
 // --- Neural Link Services ---
-import NeuralLink_ConnectionService from './mcp/server/neural-link/services/ConnectionService.mjs';
+import NeuralLink_ComponentService   from './mcp/server/neural-link/services/ComponentService.mjs';
+import NeuralLink_ConnectionService  from './mcp/server/neural-link/services/ConnectionService.mjs';
+import NeuralLink_DataService        from './mcp/server/neural-link/services/DataService.mjs';
+import NeuralLink_HealthService      from './mcp/server/neural-link/services/HealthService.mjs';
+import NeuralLink_InstanceService    from './mcp/server/neural-link/services/InstanceService.mjs';
+import NeuralLink_InteractionService from './mcp/server/neural-link/services/InteractionService.mjs';
+import NeuralLink_RuntimeService     from './mcp/server/neural-link/services/RuntimeService.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -157,7 +170,13 @@ makeSafe(Memory_HealthService,    memSpec);
 makeSafe(Memory_SummaryService,   memSpec);
 
 // Neural Link
-makeSafe(NeuralLink_ConnectionService, nlSpec);
+makeSafe(NeuralLink_ConnectionService,  nlSpec);
+makeSafe(NeuralLink_ComponentService,   nlSpec);
+makeSafe(NeuralLink_DataService,        nlSpec);
+makeSafe(NeuralLink_HealthService,      nlSpec);
+makeSafe(NeuralLink_InstanceService,    nlSpec);
+makeSafe(NeuralLink_InteractionService, nlSpec);
+makeSafe(NeuralLink_RuntimeService,     nlSpec);
 
 
 /**
@@ -208,5 +227,11 @@ export {
     Memory_SummaryService,
 
     // Neural Link
-    NeuralLink_ConnectionService
+    NeuralLink_ComponentService,
+    NeuralLink_ConnectionService,
+    NeuralLink_DataService,
+    NeuralLink_HealthService,
+    NeuralLink_InstanceService,
+    NeuralLink_InteractionService,
+    NeuralLink_RuntimeService
 };

@@ -26,6 +26,14 @@ class ComponentService extends Base {
     }
 
     /**
+     * @returns {Promise<void>}
+     */
+    async initAsync() {
+        await super.initAsync();
+        await ConnectionService.ready();
+    }
+
+    /**
      * Retrieves a property from a component by its ID.
      * @param {Object} opts             The options object.
      * @param {String} opts.id          The component ID.
@@ -111,6 +119,18 @@ class ComponentService extends Base {
      */
     async queryComponent({selector, rootId, returnProperties, sessionId}) {
         return await ConnectionService.call(sessionId, 'query_component', {selector, rootId, returnProperties});
+    }
+
+    /**
+     * Queries VDOM nodes based on a selector object (e.g. {cls: 'my-class'}).
+     * @param {Object} opts             The options object.
+     * @param {Object} opts.selector    The selector object to match against.
+     * @param {String} [opts.rootId]    Optional root component ID to limit the search scope.
+     * @param {String} [opts.sessionId] The target session ID.
+     * @returns {Promise<Object>} The matching VDOM node.
+     */
+    async queryVdom({selector, rootId, sessionId}) {
+        return await ConnectionService.call(sessionId, 'query_vdom', {selector, rootId});
     }
 
     /**
