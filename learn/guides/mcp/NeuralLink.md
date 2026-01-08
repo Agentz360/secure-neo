@@ -20,6 +20,26 @@ With the Neural Link:
 
 **This is the difference between an AI assistant and an AI developer.**
 
+## Configuration Strategy
+
+To optimize your AI context window and tool limits, we recommend different configurations based on your operational mode.
+
+### 1. Collaborative Mode (Human + Agent)
+**Best for:** Daily development, pair programming, debugging.
+
+In this mode, **you** act as the browser manager. You open the browser, navigate to the page, and the Agent "hitches a ride" via the Neural Link.
+- **Enable:** `neo.mjs-neural-link`
+- **Disable:** `chrome-devtools` (Save 26 tool slots)
+
+**Why:** The agent doesn't need to open tabs if you are already there. It needs deep introspection into the Neo.mjs runtime, which Neural Link provides and Chrome DevTools does not.
+
+### 2. Autonomous Mode (Agent OS)
+**Best for:** CI/CD, nightly regression testing, autonomous "Night Watchman" agents.
+
+In this mode, the Agent is alone. It must be able to launch its own environment.
+- **Enable:** `neo.mjs-neural-link` (For inspection)
+- **Enable:** `chrome-devtools` (For lifecycle: Open Browser, Navigate, Reload)
+
 ## Architecture
 
 The Neural Link consists of three main components arranged in a star topology:
@@ -61,9 +81,10 @@ This is why agents can reason about Neo.mjs apps with high fidelity while remain
 ## Installation & Setup
 
 ### 1. Enable the Client (App Side)
+
 To enable the Neural Link in your application, add the `useAiClient` flag to your `neo-config.json`. This tells the Main Worker to load the `Neo.ai.Client` module.
 
-```json5 readonly
+```javascript readonly
 {
     "appPath": "apps/myApp/app.mjs",
     "useAiClient": true // 👈 This is the magic flag
@@ -71,6 +92,7 @@ To enable the Neural Link in your application, add the `useAiClient` flag to you
 ```
 
 ### 2. Configure the MCP Server (Agent Side)
+
 Add the Neural Link server to your MCP configuration (e.g., `claude_desktop_config.json` or VSCode settings).
 
 ```json readonly
@@ -124,7 +146,7 @@ When multiple AI agents connect to the same Bridge, they share a single view of 
 ### Client-Side Service Pattern
 
 The Neural Link client uses a **Domain Service Architecture** to organize functionality:
-```
+```text readonly
 Neo.ai.Client (Orchestrator)
 ├── ComponentService   → UI inspection & manipulation
 ├── DataService        → Stores, records, state providers
