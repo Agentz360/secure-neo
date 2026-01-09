@@ -54,41 +54,41 @@ class QueryService extends Base {
     /**
      * Retrieves the static class hierarchy from the pre-generated JSON file.
      * @param {Object} params
-     * @param {String} [params.root] Optional root class name to filter the hierarchy (e.g., 'Neo.component.Base').
+     * @param {String} params.root Root class name to filter the hierarchy (e.g., 'Neo.component.Base').
      * @returns {Promise<Object>} The class hierarchy map or subtree.
      */
     async getClassHierarchy({root} = {}) {
+        if (!root) {
+            throw new Error('The "root" parameter is required to prevent excessive context payload. Please specify a root class (e.g., "Neo.component.Base").');
+        }
+
         if (!await fs.pathExists(aiConfig.hierarchyPath)) {
             throw new Error('Class hierarchy file not found. Please sync the knowledge base first.');
         }
 
         const hierarchy = await fs.readJson(aiConfig.hierarchyPath);
 
-        if (!root) {
-            return hierarchy;
-        }
-
         // If a root is specified, find all subclasses recursively
         const subtree = {};
         const queue = [root];
 
-        // Include the root itself if it exists
-        if (hierarchy[root]) {
+        // Include the root itself if it exists (parent is the value)
+        if (Object.hasOwn(hierarchy, root)) {
             subtree[root] = hierarchy[root];
         }
 
         while (queue.length > 0) {
             const currentParent = queue.shift();
             
-            Object.entries(hierarchy).forEach(([className, data]) => {
-                if (data.parent === currentParent) {
-                    subtree[className] = data;
+            Object.entries(hierarchy).forEach(([className, parentName]) => {
+                if (parentName === currentParent) {
+                    subtree[className] = parentName;
                     queue.push(className);
                 }
             });
         }
 
-        if (Object.keys(subtree).length === 0 && !hierarchy[root]) {
+        if (Object.keys(subtree).length === 0 && !Object.hasOwn(hierarchy, root)) {
              return { message: `Class '${root}' found in hierarchy, but it has no subclasses or entry.` };
         }
 

@@ -1,14 +1,14 @@
 ---
 id: 8362
 title: Refactor Portal 'Blog' to 'News' with Left-Tab Architecture for Releases & Posts
-state: OPEN
+state: CLOSED
 labels:
   - documentation
   - epic
 assignees:
   - tobiu
 createdAt: '2026-01-06T14:50:50Z'
-updatedAt: '2026-01-07T14:39:26Z'
+updatedAt: '2026-01-08T22:51:33Z'
 githubUrl: 'https://github.com/neomjs/neo/issues/8362'
 author: tobiu
 commentsCount: 0
@@ -30,10 +30,13 @@ subIssues:
   - '[x] 8405 Reduce sidebar width for Release view'
   - '[x] 8411 Fix Release navigation button titles showing HTML and Date'
   - '[x] 8413 Refactor Portal View Structure: Move Blog and Release under News'
-subIssuesCompleted: 16
-subIssuesTotal: 16
+  - '[x] 8439 Update SEO Service for Nested Routes and News Section'
+  - '[x] 8440 Fix Mobile Layout Overlay in Portal News TabContainer'
+subIssuesCompleted: 18
+subIssuesTotal: 18
 blockedBy: []
 blocking: []
+closedAt: '2026-01-08T22:51:33Z'
 ---
 # Refactor Portal 'Blog' to 'News' with Left-Tab Architecture for Releases & Posts
 
@@ -84,4 +87,7 @@ This structure prepares the Portal for the upcoming Middleware deployment (SSR/S
 - 2026-01-08 @tobiu added sub-issue #8405
 - 2026-01-08 @tobiu added sub-issue #8411
 - 2026-01-08 @tobiu added sub-issue #8413
+- 2026-01-08 @tobiu added sub-issue #8439
+- 2026-01-08 @tobiu added sub-issue #8440
+- 2026-01-08 @tobiu closed this issue
 

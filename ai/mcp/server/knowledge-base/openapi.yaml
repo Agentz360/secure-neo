@@ -363,7 +363,7 @@ paths:
       parameters:
         - name: root
           in: query
-          required: false
+          required: true
           description: The root class name to filter by.
           schema:
             type: string
@@ -376,13 +376,8 @@ paths:
               schema:
                 type: object
                 additionalProperties:
-                  type: object
-                  properties:
-                    source:
-                      type: string
-                    parent:
-                      type: string
-                      nullable: true
+                  type: string
+                  nullable: true
         '404':
           description: Hierarchy file not found (requires sync).
           content:

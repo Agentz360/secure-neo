@@ -28,9 +28,6 @@ class Release extends Model {
             name: 'title', // "Neo.mjs v11.18.0 Release Notes"
             type: 'String'
         }, {
-            name: 'version', // "11.18.0"
-            type: 'String'
-        }, {
             name        : 'isLeaf',
             type        : 'Boolean',
             defaultValue: true
@@ -38,10 +35,6 @@ class Release extends Model {
             name        : 'parentId',
             type        : 'String',
             defaultValue: null
-        }, {
-            name     : 'name',
-            type     : 'String',
-            calculate: data => data.version
         }, {
             // Computed field for TreeList display
             name: 'treeNodeName',
@@ -52,13 +45,13 @@ class Release extends Model {
              */
             calculate(data) {
                 const
-                    {date, version} = data;
+                    {date, id} = data;
 
                 if (date) {
-                    return `<b>${version}</b> <span class="release-date">[${new Date(date).toLocaleDateString()}]</span>`
+                    return `<b>${id}</b> <span class="release-date">[${new Date(date).toLocaleDateString()}]</span>`
                 }
 
-                return version
+                return id
             }
         }, {
             // Computed field for TreeList id

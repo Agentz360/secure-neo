@@ -21,6 +21,10 @@ class MainContainer extends Container {
          */
         baseCls: ['portal-shared-content-container', 'neo-container'],
         /**
+         * @member {String} buttonTextField='name'
+         */
+        buttonTextField: 'name',
+        /**
          * @member {Neo.component.Base|null} contentComponent=null
          */
         contentComponent: null,
@@ -69,6 +73,7 @@ class MainContainer extends Container {
             size        : 3
         }, {
             module          : PageContainer,
+            buttonTextField : me.buttonTextField,
             contentComponent: me.contentComponent || config.contentComponent
         }, {
             module   : SectionsContainer,
@@ -76,6 +81,19 @@ class MainContainer extends Container {
         }];
 
         super.construct(config)
+    }
+
+    /**
+     *
+     */
+    onConstructed() {
+        let me = this;
+
+        if (me.items[1]) {
+            me.items[1].id = `${me.id}__splitter`
+        }
+
+        super.onConstructed()
     }
 }
 

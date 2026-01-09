@@ -8,7 +8,7 @@ import semver          from 'semver';
 import {sanitizeInput} from './util/Sanitizer.mjs';
 
 const ROOT_DIR      = process.cwd();
-const RELEASE_DIR   = path.resolve(ROOT_DIR, '.github/RELEASE_NOTES');
+const RELEASE_DIR   = path.resolve(ROOT_DIR, 'resources/content/release-notes');
 const OUTPUT_FILE   = path.resolve(ROOT_DIR, 'apps/portal/resources/data/releases.json');
 
 /**
@@ -83,7 +83,7 @@ async function createReleaseIndex(options = {}) {
             version: cleanVersion,
             date   : date,
             title  : title,
-            path   : `/.github/RELEASE_NOTES/${path.basename(filePath)}`
+            path   : `resources/content/release-notes/${path.basename(filePath)}`
         };
     }));
 
@@ -113,7 +113,6 @@ async function createReleaseIndex(options = {}) {
                 collapsed: true, // Default to collapsed
                 id       : parentId,
                 isLeaf   : false,
-                name     : parentId,
                 parentId : null
             });
         }
@@ -121,8 +120,9 @@ async function createReleaseIndex(options = {}) {
         // Add tree fields to release
         release.id       = version;
         // release.isLeaf = true; // Default value in model is true
-        release.name     = version;
         release.parentId = parentId;
+
+        delete release.version;
 
         majorVersions.get(major).children.push(release);
     });
@@ -152,7 +152,6 @@ async function createReleaseIndex(options = {}) {
             collapsed: majorNode.collapsed,
             id       : majorNode.id,
             isLeaf   : majorNode.isLeaf,
-            name     : majorNode.name,
             parentId : majorNode.parentId
         });
 

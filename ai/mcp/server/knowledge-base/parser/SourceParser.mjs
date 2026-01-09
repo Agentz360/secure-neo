@@ -40,9 +40,10 @@ class SourceParser extends Base {
      * @param {String} content The raw file content.
      * @param {String} filePath The relative file path.
      * @param {String} [defaultType='src'] The type to assign to chunks (e.g., 'src', 'app', 'example').
+     * @param {Object} [hierarchy={}] The authoritative class hierarchy map.
      * @returns {Array<Object>} An array of chunks.
      */
-    parse(content, filePath, defaultType='src') {
+    parse(content, filePath, defaultType='src', hierarchy={}) {
         const chunks = [];
         let ast;
 
@@ -86,24 +87,6 @@ class SourceParser extends Base {
                         className = classDecl.id.name;
                     }
 
-                    if (classDecl.superClass) {
-                        if (classDecl.superClass.type === 'Identifier') {
-                            superClass = classDecl.superClass.name;
-                        } else if (classDecl.superClass.type === 'MemberExpression') {
-                            // Handle Neo.core.Base style
-                            let object = classDecl.superClass;
-                            let parts  = [];
-                            while(object.type === 'MemberExpression') {
-                                parts.unshift(object.property.name);
-                                object = object.object;
-                            }
-                            if (object.type === 'Identifier') {
-                                parts.unshift(object.name);
-                            }
-                            superClass = parts.join('.');
-                        }
-                    }
-
                     // Iterate Class Body
                     classDecl.body.body.forEach(member => {
                         if (member.type === 'MethodDefinition') {
@@ -132,8 +115,10 @@ class SourceParser extends Base {
             }
         });
 
-        // Resolve fully qualified className if possible (naive approach for now, relying on config)
-        // If className is still empty, we rely on what we found.
+        // Resolve superclass using the authoritative hierarchy map
+        if (className && hierarchy[className]) {
+            superClass = hierarchy[className];
+        }
 
         const commonMetadata = {
             className,
@@ -141,24 +126,21 @@ class SourceParser extends Base {
         };
 
         // 2. Extract Module Context Chunk
-        // Includes imports, top-level vars, and the class header (docs + signature)
+        // Captures everything from the start of the file up to the opening brace of the class body.
+        // This includes:
+        // - Imports
+        // - Top-level variables
+        // - Class JSDoc
+        // - Class Declaration line (e.g. "class MyComponent extends Base {")
         let contextContent = '';
-        if (contextNodes.length > 0) {
-            // Get content from start of file to end of last context node
-            const lastNode = contextNodes[contextNodes.length - 1];
-            contextContent = content.substring(0, lastNode.end) + '\n\n';
-        }
-        // Add the class definition line (and its JSDoc if adjacent)
-        // We need to be careful not to duplicate if variables are interleaved, but in Neo structure
-        // imports/vars usually come before class.
-        // A simpler approach: Context is everything *before* the class body starts, minus the class body content itself.
-        // But we want to be specific.
         
-        // Revised Context Strategy:
-        // Everything from start of file up to the opening brace of the class.
         if (classStart > 0) {
              const preClassContent = content.substring(0, classStart).trim();
              contextContent = (preClassContent ? preClassContent + '\n\n' : '') + classDefinition;
+        } else if (contextNodes.length > 0) {
+            // Fallback for files without a class (e.g. utility modules)
+            const lastNode = contextNodes[contextNodes.length - 1];
+            contextContent = content.substring(0, lastNode.end);
         }
 
         if (contextContent.trim()) {
