@@ -1,0 +1,137 @@
+import Controller from '../../../../../src/controller/Component.mjs';
+
+/**
+ * @class Portal.view.news.tickets.MainContainerController
+ * @extends Neo.controller.Component
+ */
+class MainContainerController extends Controller {
+    static config = {
+        /**
+         * @member {String} className='Portal.view.news.tickets.MainContainerController'
+         * @protected
+         */
+        className: 'Portal.view.news.tickets.MainContainerController',
+        /**
+         * @member {Object} routes
+         */
+        routes: {
+            '/news/tickets'          : 'onRouteDefault',
+            '/news/tickets/{*itemId}': 'onRouteItem'
+        }
+    }
+
+    /**
+     * @param {String} item
+     */
+    navigateTo(item) {
+        Neo.Main.setRoute({
+            value   : `/news/tickets/${item}`,
+            windowId: this.component.windowId
+        })
+    }
+
+    /**
+     * @param {Object} data
+     */
+    onContentEdit(data) {
+        // No-op for tickets
+    }
+
+    /**
+     * @param {Object} data
+     */
+    onContentRefresh(data) {
+        this.getReference('tree').doFetchContent(data.record)
+    }
+
+    /**
+     * @param {Object} data
+     */
+    onIntersect(data) {
+        let panel    = this.getReference('page-sections-container'),
+            list     = panel.list,
+            recordId = data.data.recordId;
+
+        if (recordId && !list.isAnimating) {
+            list.selectionModel.select(list.store.get(recordId))
+        }
+    }
+
+    /**
+     * @param {Object} data
+     */
+    onNextPageButtonClick(data) {
+        this.navigateTo(this.getStateProvider().getData('nextPageRecord').id)
+    }
+
+    /**
+     * @param {Object} data
+     */
+    onPageSectionsToggleButtonClick(data) {
+        this.getReference('page-sections-container').toggleCls('neo-expanded')
+    }
+
+    /**
+     * @param {Object} data
+     */
+    onPreviousPageButtonClick(data) {
+        this.navigateTo(this.getStateProvider().getData('previousPageRecord').id)
+    }
+
+    /**
+     * @param {Object} data
+     */
+    onRouteDefault(data) {
+        let store = this.getStateProvider().getStore('tree');
+
+        if (store.getCount() > 0) {
+            this.navigateTo(store.getAt(1).id)
+        } else {
+            store.on({
+                load : () => this.navigateTo(store.getAt(1).id),
+                delay: 10,
+                once : true
+            })
+        }
+    }
+
+    /**
+     * @param {Object} data
+     * @param {String} data.itemId
+     */
+    onRouteItem({itemId}) {
+        let stateProvider = this.getStateProvider(),
+            store         = stateProvider.getStore('tree'),
+            tree          = this.getReference('tree');
+
+        // Ensure the tree has the correct route prefix for this controller context
+        if (tree.routePrefix !== '/news/tickets') {
+            tree.routePrefix = '/news/tickets'
+        }
+
+        const select = () => {
+            stateProvider.data.currentPageRecord = store.get(itemId);
+            tree.expandParents(itemId);
+            tree.scrollToItem(itemId)
+        };
+
+        if (store.getCount() > 0) {
+            select()
+        } else {
+            store.on({
+                load : select,
+                delay: 10,
+                once : true
+            })
+        }
+    }
+
+    /**
+     * @param {Object} data
+     */
+    onSideNavToggleButtonClick(data) {
+        this.getReference('sidenav-container').toggleCls('neo-expanded')
+    }
+}
+
+export default Neo.setupClass(MainContainerController);

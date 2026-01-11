@@ -30,9 +30,13 @@ Since release notes have been moved to `resources/content/release-notes`, the sc
 
 This ensures the Portal app can correctly load the release notes.
 
-## Comments
+## Timeline
 
-### @tobiu - 2026-01-09 09:30
+- 2026-01-09T09:28:28Z @tobiu added the `ai` label
+- 2026-01-09T09:28:28Z @tobiu added the `refactoring` label
+- 2026-01-09T09:28:38Z @tobiu assigned to @tobiu
+- 2026-01-09T09:30:00Z @tobiu referenced in commit `7434164` - "refactor: Update release index generation path (#8454)"
+### @tobiu - 2026-01-09T09:30:01Z
 
 **Input from Gemini 3 Pro:**
 
@@ -50,11 +54,5 @@ This ensures the Portal app can correctly load the release notes.
 > }
 > ```
 
-## Activity Log
-
-- 2026-01-09 @tobiu added the `ai` label
-- 2026-01-09 @tobiu added the `refactoring` label
-- 2026-01-09 @tobiu assigned to @tobiu
-- 2026-01-09 @tobiu referenced in commit `7434164` - "refactor: Update release index generation path (#8454)"
-- 2026-01-09 @tobiu closed this issue
+- 2026-01-09T09:30:14Z @tobiu closed this issue
 

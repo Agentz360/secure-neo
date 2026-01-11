@@ -44,9 +44,14 @@ afterSetId(value, oldValue) {
 - Add unit tests to verify the fix and prevent regression.
 
 
-## Comments
+## Timeline
 
-### @tobiu - 2026-01-09 16:07
+- 2026-01-09T15:51:02Z @tobiu added the `ai` label
+- 2026-01-09T15:51:02Z @tobiu added the `refactoring` label
+- 2026-01-09T15:51:02Z @tobiu added the `core` label
+- 2026-01-09T16:07:40Z @tobiu referenced in commit `209e96d` - "refactor: Use ensureStableIds in Button.Base to prevent prototype mutation (#8471)"
+- 2026-01-09T16:07:49Z @tobiu assigned to @tobiu
+### @tobiu - 2026-01-09T16:07:58Z
 
 **Input from Gemini 3 Pro:**
 
@@ -55,14 +60,7 @@ afterSetId(value, oldValue) {
 > 
 > Verified with a new unit test in `test/playwright/unit/button/Base.spec.mjs`.
 
-## Activity Log
-
-- 2026-01-09 @tobiu added the `ai` label
-- 2026-01-09 @tobiu added the `refactoring` label
-- 2026-01-09 @tobiu added the `core` label
-- 2026-01-09 @tobiu referenced in commit `209e96d` - "refactor: Use ensureStableIds in Button.Base to prevent prototype mutation (#8471)"
-- 2026-01-09 @tobiu assigned to @tobiu
-- 2026-01-09 @tobiu added parent issue #8469
-- 2026-01-09 @tobiu closed this issue
-- 2026-01-09 @tobiu cross-referenced by #8469
+- 2026-01-09T16:09:16Z @tobiu added parent issue #8469
+- 2026-01-09T16:09:32Z @tobiu closed this issue
+- 2026-01-09T16:09:51Z @tobiu cross-referenced by #8469
 

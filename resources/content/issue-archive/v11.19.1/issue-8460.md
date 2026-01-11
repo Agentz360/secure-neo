@@ -33,9 +33,15 @@ Improve `buildScripts/publishRelease.mjs` by adding structured, intent-driven do
 
 This aligns the script with the project's high standards for documentation and maintainability.
 
-## Comments
+## Timeline
 
-### @tobiu - 2026-01-09 11:07
+- 2026-01-09T11:06:30Z @tobiu added the `documentation` label
+- 2026-01-09T11:06:30Z @tobiu added the `ai` label
+- 2026-01-09T11:06:30Z @tobiu added the `refactoring` label
+- 2026-01-09T11:06:30Z @tobiu added the `build` label
+- 2026-01-09T11:07:06Z @tobiu referenced in commit `b034728` - "docs: Enhance documentation and clean up comments (#8460)"
+- 2026-01-09T11:07:15Z @tobiu assigned to @tobiu
+### @tobiu - 2026-01-09T11:07:23Z
 
 **Input from Gemini 3 Pro:**
 
@@ -48,13 +54,5 @@ This aligns the script with the project's high standards for documentation and m
 > 
 > The script is now cleaner and better documented for future maintenance.
 
-## Activity Log
-
-- 2026-01-09 @tobiu added the `documentation` label
-- 2026-01-09 @tobiu added the `ai` label
-- 2026-01-09 @tobiu added the `refactoring` label
-- 2026-01-09 @tobiu added the `build` label
-- 2026-01-09 @tobiu referenced in commit `b034728` - "docs: Enhance documentation and clean up comments (#8460)"
-- 2026-01-09 @tobiu assigned to @tobiu
-- 2026-01-09 @tobiu closed this issue
+- 2026-01-09T11:07:40Z @tobiu closed this issue
 

@@ -30,9 +30,13 @@ Now that release note paths are relative (e.g., `resources/content/...`), this l
 **Task:**
 Refactor `getContentPath` to append `record.path` directly to `Neo.config.basePath`.
 
-## Comments
+## Timeline
 
-### @tobiu - 2026-01-09 09:37
+- 2026-01-09T09:35:28Z @tobiu added the `ai` label
+- 2026-01-09T09:35:29Z @tobiu added the `refactoring` label
+- 2026-01-09T09:35:36Z @tobiu assigned to @tobiu
+- 2026-01-09T09:37:52Z @tobiu referenced in commit `ab24524` - "refactor: Update path handling in Release Component (#8455)"
+### @tobiu - 2026-01-09T09:37:56Z
 
 **Input from Gemini 3 Pro:**
 
@@ -54,11 +58,5 @@ Refactor `getContentPath` to append `record.path` directly to `Neo.config.basePa
 >     }
 > ```
 
-## Activity Log
-
-- 2026-01-09 @tobiu added the `ai` label
-- 2026-01-09 @tobiu added the `refactoring` label
-- 2026-01-09 @tobiu assigned to @tobiu
-- 2026-01-09 @tobiu referenced in commit `ab24524` - "refactor: Update path handling in Release Component (#8455)"
-- 2026-01-09 @tobiu closed this issue
+- 2026-01-09T09:38:17Z @tobiu closed this issue
 

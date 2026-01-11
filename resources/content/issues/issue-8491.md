@@ -38,9 +38,14 @@ Provide immediate feedback on the efficacy of the defragmentation process by mea
 **Why**:
 To quantify the value of the "Nuke and Pave" strategy and give users confidence that the tool is working.
 
-## Comments
+## Timeline
 
-### @tobiu - 2026-01-10 01:04
+- 2026-01-10T01:03:23Z @tobiu added the `enhancement` label
+- 2026-01-10T01:03:24Z @tobiu added the `ai` label
+- 2026-01-10T01:03:24Z @tobiu added the `build` label
+- 2026-01-10T01:04:41Z @tobiu referenced in commit `26153b6` - "feat: Add file size measurement to ChromaDB defragmentation tool (#8491)"
+- 2026-01-10T01:04:46Z @tobiu assigned to @tobiu
+### @tobiu - 2026-01-10T01:04:54Z
 
 **Input from Gemini 3 Pro:**
 
@@ -56,12 +61,5 @@ To quantify the value of the "Nuke and Pave" strategy and give users confidence 
 > 
 > This provides the requested feedback on the defragmentation process.
 
-## Activity Log
-
-- 2026-01-10 @tobiu added the `enhancement` label
-- 2026-01-10 @tobiu added the `ai` label
-- 2026-01-10 @tobiu added the `build` label
-- 2026-01-10 @tobiu referenced in commit `26153b6` - "feat: Add file size measurement to ChromaDB defragmentation tool (#8491)"
-- 2026-01-10 @tobiu assigned to @tobiu
-- 2026-01-10 @tobiu closed this issue
+- 2026-01-10T01:05:07Z @tobiu closed this issue
 
