@@ -50,10 +50,15 @@ class MainContainerController extends Controller {
     onIntersect(data) {
         let panel    = this.getReference('page-sections-container'),
             list     = panel.list,
-            recordId = data.data.recordId;
+            recordId = data.data.recordId,
+            record;
 
         if (recordId && !list.isAnimating) {
-            list.selectionModel.select(list.store.get(recordId))
+            record = list.store.get(recordId);
+
+            if (record) {
+                list.selectionModel.select(record)
+            }
         }
     }
 
@@ -82,13 +87,14 @@ class MainContainerController extends Controller {
      * @param {Object} data
      */
     onRouteDefault(data) {
-        let store = this.getStateProvider().getStore('tree');
+        let me    = this,
+            store = me.getStateProvider().getStore('tree');
 
         if (store.getCount() > 0) {
-            this.navigateTo(store.getAt(1).id)
+            me.navigateTo(store.getAt(1).id)
         } else {
             store.on({
-                load : () => this.navigateTo(store.getAt(1).id),
+                load : () => me.navigateTo(store.getAt(1).id),
                 delay: 10,
                 once : true
             })
@@ -98,25 +104,37 @@ class MainContainerController extends Controller {
     /**
      * @param {Object} data
      * @param {String} data.itemId
+     * @param {Object} value
+     * @param {Object} oldValue
      */
-    onRouteItem({itemId}) {
-        let stateProvider = this.getStateProvider(),
+    async onRouteItem({itemId}, value, oldValue) {
+        let me            = this,
+            stateProvider = me.getStateProvider(),
             store         = stateProvider.getStore('tree'),
-            tree          = this.getReference('tree');
+            tree          = me.getReference('tree');
 
         // Ensure the tree has the correct route prefix for this controller context
         if (tree.routePrefix !== '/news/tickets') {
             tree.routePrefix = '/news/tickets'
         }
 
-        const select = () => {
+        const select = async () => {
             stateProvider.data.currentPageRecord = store.get(itemId);
             tree.expandParents(itemId);
-            tree.scrollToItem(itemId)
+
+            if (!oldValue?.hashString?.startsWith('/news/tickets')) {
+                // Wait for the expansion VDOM update to be applied and the item to be visible in the DOM
+                const id   = tree.getItemId(itemId),
+                      rect = await tree.waitForDomRect({id, attempts: 20, delay: 20});
+
+                if (rect) {
+                    tree.scrollToItem(itemId)
+                }
+            }
         };
 
         if (store.getCount() > 0) {
-            select()
+            await select()
         } else {
             store.on({
                 load : select,

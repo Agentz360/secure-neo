@@ -36,8 +36,30 @@ subIssues:
   - '[x] 8531 Polish Portal Ticket Timeline: Author & Commit Links'
   - '[x] 8533 Portal Ticket Timeline: Localized & Smart Timestamp Formatting'
   - '[x] 8534 Portal Ticket Timeline: Render Labels as Badges'
-subIssuesCompleted: 20
-subIssuesTotal: 20
+  - '[x] 8536 Feature: Canvas-based "Neural" Timeline Animation'
+  - '[x] 8542 Enhancement: "Orbit" Effect & Visual Polish for Neural Timeline'
+  - '[x] 8546 Fix TimelineCanvas crash on ticket switch (records.map is not a function)'
+  - '[x] 8544 Enhancement: Physics-based "Traffic" Animation (Variable Speed & Length)'
+  - '[x] 8543 Enhancement: "Orbit" Animation Logic (Pulse travels around nodes)'
+  - '[x] 8547 fix: Portal App tree navigation scrolling behavior'
+  - '[x] 8548 Refactor PageContainer for Tickets View'
+  - '[x] 8549 Fix duplicate listener on TimelineCanvas during navigation'
+  - '[x] 8551 Refactor TicketCanvas: Performance optimization and cleanup'
+  - '[x] 8552 Enhance TicketCanvas Documentation for Knowledge Base'
+  - '[x] 8553 Enhance TimelineCanvas Documentation for Knowledge Base'
+  - '[x] 8554 Enhance TicketComponent Documentation for Knowledge Base'
+  - '[x] 8555 Fix Zombie Canvas Loop in TicketCanvas'
+  - '[x] 8556 Enhance Neural Timeline: Limit spine and pulse to last item'
+  - '[x] 8557 Fix Ticket Timeline content overflow'
+  - '[x] 8559 Optimize TimelineCanvas data load delay'
+  - '[x] 8560 Replace hardcoded timeout in MainContainerController with deterministic wait'
+  - '[x] 8561 Remove arbitrary delay in TreeList afterSetCurrentPageRecord'
+  - '[x] 8562 Refactor TimelineCanvas.onTimelineDataLoad to use waitForDomRect'
+  - '[x] 8563 Prevent race condition in TimelineCanvas by making sections store update optional'
+  - '[x] 8564 Reset TicketCanvas animation on data load'
+  - '[x] 8565 Scope timeline item IDs to Ticket ID to prevent stale rects on switch'
+subIssuesCompleted: 42
+subIssuesTotal: 42
 blockedBy: []
 blocking: []
 ---
@@ -110,4 +132,29 @@ Updates Markdown component to respect local routing for ticket IDs if the config
 - 2026-01-11T00:07:16Z @tobiu added sub-issue #8531
 - 2026-01-11T00:55:28Z @tobiu added sub-issue #8533
 - 2026-01-11T01:13:04Z @tobiu added sub-issue #8534
+- 2026-01-11T10:16:53Z @tobiu cross-referenced by #8537
+- 2026-01-11T13:25:00Z @tobiu added sub-issue #8536
+- 2026-01-11T13:25:31Z @tobiu added sub-issue #8542
+- 2026-01-11T14:29:19Z @tobiu added sub-issue #8546
+- 2026-01-11T14:30:27Z @tobiu added sub-issue #8544
+- 2026-01-11T14:30:50Z @tobiu added sub-issue #8543
+- 2026-01-11T15:10:24Z @tobiu added sub-issue #8547
+- 2026-01-11T15:21:46Z @tobiu added sub-issue #8548
+- 2026-01-11T15:32:14Z @tobiu added sub-issue #8549
+- 2026-01-11T15:58:35Z @tobiu referenced in commit `fea49de` - "refactor: Decouple TicketTimelineSection from generic ContentSection (#8398)
+
+- Reverts  model to its generic state (id, name, tag).
+- Creates  model with full field set (including inherited fields).
+- Creates  store extending the base store.
+- Updates  to use the new specialized store."
+- 2026-01-11T16:21:07Z @tobiu referenced in commit `8e74309` - "fix: Prevent selection of undefined records in Tickets view (#8398)
+
+Fixes a runtime TypeError when  attempts to select a record that does not exist in the store."
+- 2026-01-11T16:52:24Z @tobiu added sub-issue #8551
+- 2026-01-11T16:57:53Z @tobiu added sub-issue #8552
+- 2026-01-11T17:01:44Z @tobiu added sub-issue #8553
+- 2026-01-11T17:04:38Z @tobiu added sub-issue #8554
+- 2026-01-11T17:22:23Z @tobiu added sub-issue #8555
+- 2026-01-11T17:44:26Z @tobiu added sub-issue #8556
+- 2026-01-11T17:51:31Z @tobiu added sub-issue #8557
 

@@ -1,5 +1,6 @@
 import CanvasWrapper    from './CanvasWrapper.mjs';
 import Controller       from './MainContainerController.mjs';
+import PageContainer    from './PageContainer.mjs';
 import SharedContainer  from '../../shared/content/Container.mjs';
 import StateProvider    from './MainContainerStateProvider.mjs';
 
@@ -20,18 +21,20 @@ class MainContainer extends SharedContainer {
          */
         cls: ['portal-tickets-maincontainer'],
         /**
-         * @member {String} buttonTextField='id'
-         */
-        buttonTextField: 'id',
-        /**
-         * @member {Neo.component.Base} contentComponent=CanvasWrapper
-         */
-        contentComponent: CanvasWrapper,
-        /**
          * @member {Neo.controller.Component} controller=MainContainerController
          * @reactive
          */
         controller: Controller,
+        /**
+         * @member {Object} pageContainerConfig
+         */
+        pageContainerConfig: {
+            module         : PageContainer,
+            buttonTextField: 'id',
+            contentConfig  : {
+                module: CanvasWrapper
+            }
+        },
         /**
          * @member {Neo.state.Provider} stateProvider=MainContainerStateProvider
          * @reactive
