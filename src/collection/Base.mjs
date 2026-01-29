@@ -193,7 +193,10 @@ class Collection extends Base {
 
             for (; i < len; i++) {
                 item = value[i];
-                me.map.set(item[keyProperty], item)
+
+                if (item) {
+                    me.map.set(item[keyProperty], item)
+                }
             }
 
             me.count = len
@@ -419,8 +422,11 @@ class Collection extends Base {
      * Removes all items and clears the map
      */
     clear() {
-        this.splice(0, this.count);
-        this.initialIndexCounter = 0
+        let me = this;
+
+        me.allItems?.clear();
+        me.splice(0, me.count);
+        me.initialIndexCounter = 0
     }
 
     /**
@@ -437,8 +443,11 @@ class Collection extends Base {
     clearSilent() {
         let me = this;
 
+        me.allItems?.clearSilent();
+
         me._items.splice(0, me.count);
-        me.map.clear()
+        me.map.clear();
+        me.initialIndexCounter = 0
     }
 
     /**
@@ -493,6 +502,11 @@ class Collection extends Base {
      */
     destroy() {
         let me = this;
+
+        me.allItems?.destroy();
+
+        me.filters?.forEach(item => item?.destroy());
+        me.sorters?.forEach(item => item?.destroy());
 
         me._items.splice(0, me._items.length);
         me.map.clear();
@@ -690,7 +704,10 @@ class Collection extends Base {
                 needsSorting = true
             }
 
-            me.clearSilent();
+            // We cannot use clearSilent() here, since it would clear allItems as well
+            me._items.splice(0, me.count);
+            me.map.clear();
+            me.initialIndexCounter = 0;
 
             me.items = [...me.allItems._items]
         } else {

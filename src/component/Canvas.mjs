@@ -50,9 +50,9 @@ class Canvas extends Component {
     async afterSetMounted(value, oldValue) {
         super.afterSetMounted(value, oldValue);
 
-        let me          = this,
-            id          = me.getCanvasId(),
-            {offscreen} = me;
+        let me                    = this,
+            id                    = me.getCanvasId(),
+            {offscreen, windowId} = me;
 
         if (value) {
             await me.timeout(30); // next rAF tick
@@ -66,29 +66,42 @@ class Canvas extends Component {
             }
 
             if (offscreen) {
-                const data = await Neo.main.DomAccess.getOffscreenCanvas({
-                    nodeId  : id,
-                    windowId: me.windowId
-                });
+                let data,
+                    delay = 50;
 
-                if (data.offscreen) {
-                    await Neo.worker.Canvas.registerCanvas({
-                        node    : data.offscreen,
-                        nodeId  : id,
-                        windowId: me.windowId
-                    }, [data.offscreen]);
+                while (me.mounted && !me.offscreenRegistered && !me.isDestroyed) {
+                    data = await Neo.main.DomAccess.getOffscreenCanvas({
+                        nodeId: id,
+                        windowId
+                    });
 
-                    me.offscreenRegistered = true
-                } else if (data.transferred) {
-                    if (Neo.config.useSharedWorkers) {
-                        let retrieveData = await Neo.worker.Canvas.retrieveCanvas({
-                            nodeId  : id,
-                            windowId: me.windowId
-                        });
+                    if (data.offscreen) {
+                        await Neo.worker.Canvas.registerCanvas({
+                            node  : data.offscreen,
+                            nodeId: id,
+                            windowId
+                        }, [data.offscreen]);
 
-                        if (retrieveData.hasCanvas) {
-                            me.offscreenRegistered = true
+                        me.offscreenRegistered = true;
+                        break
+                    } else if (data.transferred) {
+                        if (Neo.config.useSharedWorkers) {
+                            let retrieveData = await Neo.worker.Canvas.retrieveCanvas({
+                                nodeId: id,
+                                windowId
+                            });
+
+                            if (retrieveData.hasCanvas) {
+                                me.offscreenRegistered = true;
+                                break
+                            }
                         }
+                    }
+
+                    await me.timeout(delay);
+
+                    if (delay < 1000) {
+                        delay *= 2
                     }
                 }
             }
@@ -100,11 +113,13 @@ class Canvas extends Component {
 
     /**
      * Triggered after the windowId config got changed
-     * @param {Number|null} value
-     * @param {Number|null} oldValue
+     * @param {String|null} value
+     * @param {String|null} oldValue
      * @protected
      */
     afterSetWindowId(value, oldValue) {
+        super.afterSetWindowId(value, oldValue);
+
         if (oldValue) {
             this.offscreenRegistered = false
         }

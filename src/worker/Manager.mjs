@@ -5,8 +5,8 @@ import Message            from './Message.mjs';
 import Observable         from '../core/Observable.mjs';
 import RemoteMethodAccess from './mixin/RemoteMethodAccess.mjs';
 
-const NeoConfig    = Neo.config,
-      hasJsModules = NeoConfig.environment === 'development' || NeoConfig.environment === 'dist/esm';
+const NeoConfig   = Neo.config,
+      useMjsFiles = NeoConfig.environment === 'development' || NeoConfig.environment === 'dist/esm';
 
 // Using ?. since SWs do not exist for http (only https)
 navigator.serviceWorker?.addEventListener('controllerchange', function() {
@@ -109,19 +109,19 @@ class Manager extends Base {
          */
         workers: {
             app: {
-                fileName: hasJsModules ? 'App.mjs'    : 'appworker.js'
+                fileName: useMjsFiles ? 'App.mjs'    : 'appworker.js'
             },
             canvas: {
-                fileName: hasJsModules ? 'Canvas.mjs' : 'canvasworker.js'
+                fileName: useMjsFiles ? 'Canvas.mjs' : 'canvasworker.js'
             },
             data: {
-                fileName: hasJsModules ? 'Data.mjs'   : 'dataworker.js'
+                fileName: useMjsFiles ? 'Data.mjs'   : 'dataworker.js'
             },
             task: {
-                fileName: hasJsModules ? 'Task.mjs'   : 'taskworker.js'
+                fileName: useMjsFiles ? 'Task.mjs'   : 'taskworker.js'
             },
             vdom: {
-                fileName: hasJsModules ? 'VDom.mjs'   : 'vdomworker.js'
+                fileName: useMjsFiles ? 'VDom.mjs'   : 'vdomworker.js'
             }
         }
     }
@@ -139,18 +139,31 @@ class Manager extends Base {
      * @param {Object} config
      */
     construct(config) {
-        super.construct(config);
-
         let me = this;
+
+        me.promises = {};
+
+        super.construct(config);
 
         me.detectFeatures();
 
         !Neo.insideWorker && me.createWorkers();
 
+        if (navigator.serviceWorker) {
+            // Bind the message handler globally to ensure even "unmanaged" apps (those not using the SW addon)
+            // can receive critical recovery commands (like 'reloadWindow') from the Service Worker.
+            //
+            // CRITICAL: We must bind this even if Neo.config.useServiceWorker is false.
+            // Scenario: User visits App A (uses SW), then navigates to App B (no SW). The SW from App A
+            // *still controls* App B (if in scope). If App B hits a version mismatch (404), the SW will
+            // send a 'reloadWindow' command. App B must be listening to execute this recovery command,
+            // otherwise it will crash with a blank page.
+            navigator.serviceWorker.onmessage = me.onWorkerMessage.bind(me);
+            me.checkServiceWorkerVersion()
+        }
+
         Neo.setGlobalConfig = me.setGlobalConfig.bind(me);
         Neo.workerId        = 'main';
-
-        me.promises = {};
 
         me.on({
             'message:addDomListener'    : {fn: DomEvents.addDomListener,       scope: DomEvents},
@@ -178,6 +191,40 @@ class Manager extends Base {
     }
 
     /**
+     * Proactively checks if the controlling Service Worker's version matches the client's version.
+     * This is the primary defense against "Zombie Apps" (stale client code running against a new Service Worker).
+     *
+     * If a mismatch is detected, it forces a hard reload to fetch fresh assets.
+     * Includes a throttle mechanism (via sessionStorage) to prevent infinite reload loops in case of persistent mismatches.
+     *
+     * @returns {Promise<void>}
+     */
+    async checkServiceWorkerVersion() {
+        if (navigator.serviceWorker?.controller) {
+            let swVersion = await this.promiseMessage('service', {
+                action: 'getVersion'
+            });
+
+            if (swVersion?.version && swVersion.version !== Neo.config.version) {
+                const
+                    key        = 'neoVersionReload',
+                    lastReload = parseInt(sessionStorage.getItem(key) || '0'),
+                    now        = Date.now();
+
+                if (now - lastReload < 5000) {
+                    console.error('Reload loop detected. Aborting version enforcement.');
+                    return
+                }
+
+                sessionStorage.setItem(key, String(now));
+
+                console.error(`Version Mismatch! Client: ${Neo.config.version}, SW: ${swVersion.version}. Reloading.`);
+                location.reload(true)
+            }
+        }
+    }
+
+    /**
      * Creates a web worker using the passed options as well as adding error & message event listeners.
      * @param {Object} opts
      * @returns {SharedWorker|Worker}
@@ -189,9 +236,7 @@ class Manager extends Base {
             name       = `neomjs-${fileName.substring(0, fileName.indexOf('.')).toLowerCase()}-worker`,
             isShared   = me.sharedWorkersEnabled && NeoConfig.useSharedWorkers,
             cls        = isShared ? SharedWorker : Worker,
-            worker     = hasJsModules
-                ? new cls(filePath, {name, type: 'module'})
-                : new cls(filePath, {name});
+            worker     = new cls(filePath, {name, type: 'module'});
 
         (isShared ? worker.port : worker).onmessage = me.onWorkerMessage.bind(me);
         (isShared ? worker.port : worker).onerror   = me.onWorkerError  .bind(me);
@@ -273,8 +318,9 @@ class Manager extends Base {
     detectFeatures() {
         let me = this;
 
-        NeoConfig.hasMouseEvents = matchMedia('(pointer:fine)').matches;
-        NeoConfig.hasTouchEvents = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        NeoConfig.hasMouseEvents   = matchMedia('(pointer:fine)').matches;
+        NeoConfig.hasTouchEvents   = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        NeoConfig.prefersDarkTheme = matchMedia('(prefers-color-scheme: dark)').matches;
 
         // Useful for styling
         document.body.classList.add(NeoConfig.hasMouseEvents ? 'neo-mouse' : 'neo-no-mouse');
@@ -299,7 +345,13 @@ class Manager extends Base {
             return navigator.serviceWorker?.controller || this.serviceWorker
         }
 
-        return name instanceof Worker ? name : this.workers[name].worker
+        const item = this.workers[name];
+
+        if (item) {
+            return name instanceof Worker ? name : item.worker
+        }
+
+        return null
     }
 
     /**
@@ -372,7 +424,7 @@ class Manager extends Base {
      */
     onWorkerError(e) {
         // starting a worker from a JS module will show JS errors in a correct way
-        !hasJsModules && console.log('Worker Error:', e)
+        !useMjsFiles && console.log('Worker Error:', e)
     }
 
     /**

@@ -50,34 +50,6 @@ class MainContainerController extends Controller {
         })
     }
 
-    /**
-     * @param {Object} data
-     * @returns {Promise<void>}
-     */
-    async onContentEdit(data) {
-        const vm = this.getStateProvider();
-        console.log(data);
-        const editorConfig = vm.getData('editorConfig');
-        const subDir = vm.getData('deck')
-        if (!editorConfig || !subDir) return;
-
-        const filePath = `${editorConfig.root}/${subDir}/pages/${data.record.id}.md`;
-
-        await fetch('http://localhost:3000/openInEditor', {
-            method: 'POST',
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({path: filePath, editor: editorConfig.editor})
-        })
-    }
-
-    /**
-     * @param {Object} data
-     */
-    onContentRefresh(data) {
-        this.getReference('tree').doFetchContent(data.record)
-    }
 
     /**
      * @param {Object} data
@@ -125,8 +97,10 @@ class MainContainerController extends Controller {
     /**
      * @param {Object} data
      * @param {String} data.itemId
+     * @param {Object} value
+     * @param {Object} oldValue
      */
-    onRouteLearnItem({itemId}) {
+    async onRouteLearnItem({itemId}, value, oldValue) {
         let stateProvider = this.getStateProvider(),
             store         = stateProvider.getStore('tree'),
             tree          = this.getReference('tree');
@@ -136,11 +110,21 @@ class MainContainerController extends Controller {
             tree.routePrefix = '/learn'
         }
 
+        const select = async () => {
+            stateProvider.data.currentPageRecord = store.get(itemId);
+
+            if (!oldValue?.hashString?.startsWith('/learn')) {
+                await tree.expandAndScrollToItem(itemId)
+            } else {
+                tree.expandParents(itemId)
+            }
+        };
+
         if (store.getCount() > 0) {
-            stateProvider.data.currentPageRecord = store.get(itemId)
+            await select()
         } else {
             store.on({
-                load : () => {stateProvider.data.currentPageRecord = store.get(itemId)},
+                load : select,
                 delay: 10,
                 once : true
             })

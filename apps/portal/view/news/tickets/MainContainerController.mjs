@@ -33,20 +33,6 @@ class MainContainerController extends Controller {
     /**
      * @param {Object} data
      */
-    onContentEdit(data) {
-        // No-op for tickets
-    }
-
-    /**
-     * @param {Object} data
-     */
-    onContentRefresh(data) {
-        this.getReference('tree').doFetchContent(data.record)
-    }
-
-    /**
-     * @param {Object} data
-     */
     onIntersect(data) {
         let panel    = this.getReference('page-sections-container'),
             list     = panel.list,
@@ -84,6 +70,31 @@ class MainContainerController extends Controller {
     }
 
     /**
+     * @returns {String}
+     */
+    getDefaultRouteId() {
+        let store     = this.getStateProvider().getStore('tree'),
+            rootCount = 0,
+            i         = 0,
+            len       = store.getCount(),
+            record;
+
+        for (; i < len; i++) {
+            record = store.getAt(i);
+
+            if (record.parentId === null) {
+                rootCount++;
+
+                if (rootCount === 2) {
+                    return store.getAt(i + 1)?.id
+                }
+            }
+        }
+
+        return store.getAt(1)?.id
+    }
+
+    /**
      * @param {Object} data
      */
     onRouteDefault(data) {
@@ -91,10 +102,10 @@ class MainContainerController extends Controller {
             store = me.getStateProvider().getStore('tree');
 
         if (store.getCount() > 0) {
-            me.navigateTo(store.getAt(1).id)
+            me.navigateTo(me.getDefaultRouteId())
         } else {
             store.on({
-                load : () => me.navigateTo(store.getAt(1).id),
+                load : () => me.navigateTo(me.getDefaultRouteId()),
                 delay: 10,
                 once : true
             })
@@ -120,16 +131,11 @@ class MainContainerController extends Controller {
 
         const select = async () => {
             stateProvider.data.currentPageRecord = store.get(itemId);
-            tree.expandParents(itemId);
 
             if (!oldValue?.hashString?.startsWith('/news/tickets')) {
-                // Wait for the expansion VDOM update to be applied and the item to be visible in the DOM
-                const id   = tree.getItemId(itemId),
-                      rect = await tree.waitForDomRect({id, attempts: 20, delay: 20});
-
-                if (rect) {
-                    tree.scrollToItem(itemId)
-                }
+                await tree.expandAndScrollToItem(itemId)
+            } else {
+                tree.expandParents(itemId)
             }
         };
 

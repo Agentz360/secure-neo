@@ -152,6 +152,10 @@ class VDom extends Base {
     static getById(vdom, id) {
         vdom = VDom.getVdom(vdom);
 
+        if (!vdom) {
+            return null
+        }
+
         let childNodes = vdom.cn || [],
             i          = 0,
             len        = childNodes.length,
@@ -164,14 +168,16 @@ class VDom extends Base {
         for (; i < len; i++) {
             childNode = VDom.getVdom(childNodes[i]);
 
-            if (childNode.id === id) {
-                return childNode
-            }
-
-            childNode = VDom.getById(childNode, id);
-
             if (childNode) {
-                return childNode
+                if (childNode.id === id) {
+                    return childNode
+                }
+
+                childNode = VDom.getById(childNode, id);
+
+                if (childNode) {
+                    return childNode
+                }
             }
         }
 
@@ -432,20 +438,6 @@ class VDom extends Base {
             let childNodes = vdom.cn,
                 cn, i, len;
 
-            if (force) {
-                if (vnode.id && vdom.id !== vnode.id) {
-                    vdom.id = vnode.id
-                }
-            } else {
-                // We only want to add an ID if the vdom node does not already have one.
-                // This preserves developer-provided IDs while allowing the framework
-                // to assign IDs to nodes that need them for reconciliation.
-                // Also think of adding and removing nodes in parallel.
-                if (vnode.id && (!vdom.id || vdom.id.startsWith('neo-vnode-'))) {
-                    vdom.id = vnode.id
-                }
-            }
-
             // 1. Rehydration (vnode -> vdom)
             // Used by Functional Components (vdom is new)
             if (Neo.isNumber(vnode.scrollTop) && !Neo.isNumber(vdom.scrollTop)) {
@@ -474,6 +466,10 @@ class VDom extends Base {
                 cn  = cn.filter(item => item && item.removeDom !== true);
                 i   = 0;
                 len = cn?.length || 0;
+
+                if (vnode.childNodes && vnode.childNodes.length !== len) {
+                    return
+                }
 
                 for (; i < len; i++) {
                     if (vnode.childNodes) {

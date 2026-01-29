@@ -87,12 +87,19 @@ Neo = globalThis.Neo = Object.assign({
      */
     ntypeMap: {},
     /**
-     * Needed for Neo.create. False for the main thread, true for the App, Data & Vdom worker
+     * Needed for Neo.create. False for the main thread, true for the App, Data & VDom worker
      * @memberOf! module:Neo
      * @protected
      * @type Boolean
      */
     insideWorker: typeof DedicatedWorkerGlobalScope !== 'undefined' || typeof WorkerGlobalScope !== 'undefined',
+
+    /**
+     * A symbol to identify if a promise was rejected because the instance got destroyed.
+     * @memberOf! module:Neo
+     * @type {Symbol}
+     */
+    isDestroyed: Symbol.for('Neo.isDestroyed'),
 
     /**
      * Maps methods from one namespace to another one
@@ -806,6 +813,10 @@ If you intended to create custom logic, use the 'beforeGet${Neo.capitalize(key)}
          * Example: code.LivePreview running inside a dist/production app.
          */
         if (ns) {
+            if (Neo.config.unitTestMode) {
+                throw new Error('Namespace collision in unitTestMode for ' + proto.constructor.config.className)
+            }
+
             return ns
         }
 
@@ -1171,5 +1182,27 @@ function parseArrayFromString(str) {
 Neo.config ??= {};
 
 Neo.assignDefaults(Neo.config, DefaultConfig);
+
+if (typeof globalThis.addEventListener === 'function') {
+    // Browsers and Workers
+    globalThis.addEventListener('unhandledrejection', e => {
+        if (e.reason === Neo.isDestroyed) {
+            e.preventDefault()
+        }
+    })
+} else if (typeof process !== 'undefined' && typeof process.emit === 'function') {
+    // Node.js
+    // We need to intercept the emit, since test runners like Playwright
+    // will listen to unhandledRejection and fail the test
+    const originalEmit = process.emit;
+
+    process.emit = function(name, data, ...args) {
+        if (name === 'unhandledRejection' && data === Neo.isDestroyed) {
+            return true
+        }
+
+        return originalEmit.apply(this, arguments)
+    }
+}
 
 export default Neo;
