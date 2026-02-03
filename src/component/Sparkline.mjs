@@ -1,20 +1,20 @@
-import Canvas from '../../../src/component/Canvas.mjs';
+import Canvas from './Canvas.mjs';
 
 /**
- * @class DevRank.view.SparklineComponent
+ * @class Neo.component.Sparkline
  * @extends Neo.component.Canvas
  */
-class SparklineComponent extends Canvas {
+class Sparkline extends Canvas {
     static config = {
         /**
-         * @member {String} className='DevRank.view.SparklineComponent'
+         * @member {String} className='Neo.component.Sparkline'
          * @protected
          */
-        className: 'DevRank.view.SparklineComponent',
+        className: 'Neo.component.Sparkline',
         /**
-         * @member {String[]} cls=['devrank-sparkline-canvas']
+         * @member {String[]} cls=['neo-sparkline-canvas']
          */
-        cls: ['devrank-sparkline-canvas'],
+        cls: ['neo-sparkline-canvas'],
         /**
          * @member {Object[]} domListeners
          */
@@ -34,6 +34,18 @@ class SparklineComponent extends Canvas {
          */
         ntype: 'sparkline',
         /**
+         * The class name of the renderer to use in the worker.
+         * @member {String} rendererClassName='Neo.canvas.Sparkline'
+         */
+        rendererClassName: 'Neo.canvas.Sparkline',
+        /**
+         * The import path for the renderer module.
+         * @member {String} rendererImportPath='src/canvas/Sparkline.mjs'
+         */
+        rendererImportPath: 'src/canvas/Sparkline.mjs',
+        /**
+         * Controls the "Living Pulse" animation.
+         * Set to `false` to disable the background animation.
          * @member {Boolean} usePulse_=true
          */
         usePulse_: true,
@@ -42,9 +54,9 @@ class SparklineComponent extends Canvas {
          */
         values_: null,
         /**
-         * @member {String[]} wrapperCls=['devrank-sparkline-wrapper']
+         * @member {String[]} wrapperCls=['neo-sparkline-wrapper']
          */
-        wrapperCls: ['devrank-sparkline-wrapper'],
+        wrapperCls: ['neo-sparkline-wrapper'],
         /**
          * @member {Object} _vdom
          */
@@ -56,12 +68,13 @@ class SparklineComponent extends Canvas {
     }
 
     /**
+     * Updates the pulse configuration in the worker when `usePulse` changes.
      * @param {Boolean} value
      * @param {Boolean} oldValue
      */
     afterSetUsePulse(value, oldValue) {
         if (this.offscreenRegistered && value !== undefined) {
-            this.renderer.updateConfig({
+            this.renderer?.updateConfig({
                 canvasId: this.id,
                 usePulse: value
             })
@@ -76,11 +89,44 @@ class SparklineComponent extends Canvas {
         let me = this;
 
         if (me.offscreenRegistered && value) {
-            me.renderer.updateData({
+            me.renderer?.updateData({
                 canvasId: me.id,
                 values  : value
             })
         }
+    }
+
+    /**
+     * @param {...*} args
+     */
+    destroy(...args) {
+        if (this.offscreenRegistered) {
+            this.renderer?.unregister({
+                canvasId: this.id
+            })
+        }
+
+        super.destroy(...args)
+    }
+
+    /**
+     * Triggered after the mounted config got changed
+     * @param {Boolean} value
+     * @param {Boolean} oldValue
+     * @protected
+     */
+    async afterSetMounted(value, oldValue) {
+        let me = this;
+
+        if (value) {
+            await me.ready()
+        } else if (me.offscreenRegistered) {
+            me.renderer?.unregister({
+                canvasId: me.id
+            })
+        }
+
+        super.afterSetMounted(value, oldValue)
     }
 
     /**
@@ -92,7 +138,7 @@ class SparklineComponent extends Canvas {
             let me       = this,
                 {values} = me;
 
-            await me.renderer.register({
+            await me.renderer?.register({
                 canvasId        : me.id,
                 devicePixelRatio: Neo.config.devicePixelRatio,
                 theme           : me.theme || 'light',
@@ -101,16 +147,16 @@ class SparklineComponent extends Canvas {
             });
 
             if (values) {
-                me.renderer.updateData({
+                me.renderer?.updateData({
                     canvasId: me.id,
                     values
                 })
             }
-            
+
             // Initial size sync
             let rect = await me.getDomRect(me.id);
             if (rect) {
-                me.renderer.updateSize({
+                me.renderer?.updateSize({
                     canvasId: me.id,
                     devicePixelRatio: Neo.config.devicePixelRatio,
                     height  : rect.height,
@@ -121,10 +167,10 @@ class SparklineComponent extends Canvas {
     }
 
     /**
-     * @returns {Object}
+     * @returns {Object|null}
      */
     get renderer() {
-        return Neo.ns('DevRank.canvas.Sparkline')
+        return this.rendererClassName ? Neo.ns(this.rendererClassName) : null
     }
 
     /**
@@ -142,10 +188,39 @@ class SparklineComponent extends Canvas {
     }
 
     /**
+     * @returns {Promise<void>}
+     */
+    async initAsync() {
+        await super.initAsync();
+
+        if (this.rendererImportPath) {
+             // Ensure Canvas Worker is running
+            await Neo.worker.Manager.startWorker({name: 'canvas'});
+
+            // Wait for the Canvas Worker remote to be available.
+            let i = 0;
+
+            while (!Neo.ns('Neo.worker.Canvas.loadModule') && i < 40) {
+                await this.timeout(50);
+                i++
+            }
+
+            if (Neo.ns('Neo.worker.Canvas.loadModule')) {
+                // Load the specific renderer module for this component
+                await Neo.worker.Canvas.loadModule({
+                    path: this.rendererImportPath
+                })
+            } else {
+                console.error('Neo.component.Sparkline: Canvas Worker failed to register remote methods.')
+            }
+        }
+    }
+
+    /**
      * @param {Object} data
      */
     onMouseLeave(data) {
-        this.renderer.onMouseLeave({
+        this.renderer?.onMouseLeave({
             canvasId: this.id
         })
     }
@@ -154,7 +229,7 @@ class SparklineComponent extends Canvas {
      * @param {Object} data
      */
     onMouseMove(data) {
-        this.renderer.onMouseMove({
+        this.renderer?.onMouseMove({
             canvasId: this.id,
             x       : data.offsetX,
             y       : data.offsetY
@@ -165,7 +240,7 @@ class SparklineComponent extends Canvas {
      * @param {Object} data
      */
     onResize(data) {
-        this.renderer.updateSize({
+        this.renderer?.updateSize({
             canvasId        : this.id,
             devicePixelRatio: Neo.config.devicePixelRatio,
             height          : data.contentRect.height,
@@ -174,4 +249,4 @@ class SparklineComponent extends Canvas {
     }
 }
 
-export default Neo.setupClass(SparklineComponent);
+export default Neo.setupClass(Sparkline);
