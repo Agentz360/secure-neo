@@ -1,5 +1,6 @@
-import Base  from '../core/Base.mjs';
-import Model from './Model.mjs';
+import {internalId} from '../core/ConfigSymbols.mjs';
+import Base         from '../core/Base.mjs';
+import Model        from './Model.mjs';
 
 const
     dataSymbol         = Symbol.for('data'),
@@ -40,16 +41,7 @@ class RecordFactory extends Base {
      */
     assignDefaultValues(data, model) {
         model.fieldsMap.forEach((field, fieldName) => {
-            if (Object.hasOwn(field, 'defaultValue')) {
-                const defaultValue = Neo.isFunction(field.defaultValue) ? field.defaultValue() : field.defaultValue;
-
-                // We could always use Neo.assignToNs() => the check is just for improving the performance
-                if (model.hasNestedFields) {
-                    Neo.assignToNs(fieldName, defaultValue, data, false)
-                } else if (data[fieldName] === undefined) {
-                    data[fieldName] = defaultValue
-                }
-            } else if (field.mapping && !Object.hasOwn(data, fieldName)) {
+            if (field.mapping && !Object.hasOwn(data, fieldName)) {
                 let ns  = field.mapping.split('.'),
                     key = ns.pop(),
                     source;
@@ -62,6 +54,17 @@ class RecordFactory extends Base {
 
                 if (source && Object.hasOwn(source, key)) {
                     data[fieldName] = source[key]
+                }
+            }
+
+            if (Object.hasOwn(field, 'defaultValue')) {
+                const defaultValue = Neo.isFunction(field.defaultValue) ? field.defaultValue() : field.defaultValue;
+
+                // We could always use Neo.assignToNs() => the check is just for improving the performance
+                if (model.hasNestedFields) {
+                    Neo.assignToNs(fieldName, defaultValue, data, false)
+                } else if (data[fieldName] === undefined) {
+                    data[fieldName] = defaultValue
                 }
             }
         });
@@ -146,7 +149,13 @@ class RecordFactory extends Base {
                     static name = 'Record';
 
                     [dataSymbol]         = {};
-                    [initialIndexSymbol] = null
+                    [initialIndexSymbol] = null;
+
+                    /**
+                     * The stable, globally unique internal ID for this record instance.
+                     * @member {String} internalId
+                     */
+                    [internalId] = Neo.getId('record');
 
                     get isModified() {
                         let me = this;
@@ -179,6 +188,22 @@ class RecordFactory extends Base {
                         }
 
                         me.setSilent(config) // We do not want to fire change events when constructing
+                    }
+
+                    /**
+                     * @param {String} field
+                     * @returns {*}
+                     */
+                    get(field) {
+                        if (model.getField(field)) {
+                            return this[field]
+                        }
+
+                        if (field.includes('.')) {
+                            return Neo.ns(field, false, this[dataSymbol])
+                        }
+
+                        return this[dataSymbol][field]
                     }
 
                     /**

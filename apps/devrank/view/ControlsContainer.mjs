@@ -1,4 +1,8 @@
+import * as selection from '../../../src/selection/grid/_export.mjs';
+import CheckBox  from '../../../src/form/field/CheckBox.mjs';
 import Container from '../../../src/container/Base.mjs';
+import Country   from '../../../src/form/field/Country.mjs';
+import Radio     from '../../../src/form/field/Radio.mjs';
 import TabContainer from '../../../src/tab/Container.mjs';
 
 /**
@@ -21,11 +25,6 @@ class ControlsContainer extends Container {
          * @member {Object[]} items
          */
         items: [{
-            ntype  : 'button',
-            cls    : ['controls-container-button'],
-            handler: 'up.onControlsToggleButtonClick',
-            iconCls: 'fas fa-bars'
-        }, {
             module        : TabContainer,
             cls           : ['devrank-controls-container-content'],
             dragResortable: true,
@@ -42,19 +41,96 @@ class ControlsContainer extends Container {
                 layout: 'vbox',
 
                 items: [{
-                    ntype     : 'textfield',
-                    clearable : true,
-                    editable  : true,
-                    labelText : 'Search User',
-                    labelWidth: 90,
-                    listeners : {change: 'up.onSearchFieldChange'},
-                    name      : 'search',
-                    style     : {marginTop: '.3em'},
-                    width     : 200
+                    module       : Country,
+                    clearable    : true,
+                    labelPosition: 'inline',
+                    labelText    : 'Country',
+                    listeners    : {change: 'up.onFilterChange'},
+                    name         : 'location',
+                    showFlags    : true,
+                    style        : {marginTop: '.3em'},
+                    width        : 200
+                }, {
+                    ntype        : 'textfield',
+                    clearable    : true,
+                    editable     : true,
+                    labelPosition: 'inline',
+                    labelText    : 'Username',
+                    listeners    : {change: 'up.onFilterChange'},
+                    name         : 'login',
+                    style        : {marginTop: '.3em'},
+                    width        : 200
+                }, {
+                    ntype        : 'textfield',
+                    clearable    : true,
+                    editable     : true,
+                    labelPosition: 'inline',
+                    labelText    : 'Fullname',
+                    listeners    : {change: 'up.onFilterChange'},
+                    name         : 'name',
+                    style        : {marginTop: '.3em'},
+                    width        : 200
+                }, {
+                    module       : CheckBox,
+                    checked      : false,
+                    hideLabel    : true,
+                    listeners    : {change: 'up.onCommitsOnlyChange'},
+                    style        : {marginTop: '1em'},
+                    valueLabel   : 'Commits Only',
+                    width        : 200
+                }, {
+                    module       : CheckBox,
+                    checked      : true,
+                    hideLabel    : true,
+                    listeners    : {change: 'up.onShowAnimationsChange'},
+                    style        : {marginTop: '1em'},
+                    valueLabel   : 'Show Animations',
+                    width        : 200
                 }, {
                     ntype    : 'label',
                     reference: 'count-rows-label',
                     style    : {marginTop: '1em'}
+                }]
+            }, {
+                module: Container,
+                header: {text: 'Selection'},
+                layout: 'vbox',
+
+                itemDefaults: {
+                    module        : Radio,
+                    hideLabel     : true,
+                    hideValueLabel: false,
+                    labelText     : '',
+                    listeners     : {change: 'up.onSelectionModelChange'},
+                    name          : 'selectionModel',
+                    style         : {marginTop: '.3em'},
+                    width         : 200
+                },
+
+                items: [{
+                    ntype: 'label',
+                    style: {marginTop: 0},
+                    text : 'Pick the Selection Model'
+                }, {
+                    style         : {marginTop: '1em'},
+                    selectionModel: selection.CellModel,
+                    valueLabel    : 'Cell'
+                }, {
+                    selectionModel: selection.ColumnModel,
+                    valueLabel    : 'Column'
+                }, {
+                    checked       : true,
+                    selectionModel: selection.RowModel,
+                    valueLabel    : 'Row'
+                }, {
+                    selectionModel: selection.CellColumnModel,
+                    valueLabel    : 'Cell & Column'
+                }, {
+                    selectionModel: selection.CellRowModel,
+                    valueLabel    : 'Cell & Row'
+                }, {
+                    selectionModel: selection.CellColumnRowModel,
+                    valueLabel    : 'Cell & Column & Row'
                 }]
             }]
         }],
@@ -79,22 +155,6 @@ class ControlsContainer extends Container {
         return this.parent.getItem('grid')
     }
 
-    /**
-     * @param {Object} data
-     */
-    async onControlsToggleButtonClick(data) {
-        let me     = this,
-            button = data.component;
-
-        button.expanded = !button.expanded;
-
-        me.toggleCls('neo-expanded');
-
-        await me.timeout(button.expanded ? 250 : 0);
-
-        me.grid.toggleCls('neo-extend-margin-right');
-    }
-
     onConstructed() {
         super.onConstructed();
 
@@ -111,12 +171,29 @@ class ControlsContainer extends Container {
     /**
      * @param {Object} data
      */
-    async onSearchFieldChange(data) {
-        let me = this;
+    onCommitsOnlyChange(data) {
+        this.grid.commitsOnly = data.value
+    }
 
-        // Simple single-field filter for now
-        // We can expand this to search multiple fields if needed
-        me.grid.store.getFilter('login').value = data.value;
+    /**
+     * @param {Object} data
+     */
+    onFilterChange(data) {
+        this.grid.store.getFilter(data.component.name).value = data.value
+    }
+
+    /**
+     * @param {Object} data
+     */
+    onSelectionModelChange(data) {
+        this.grid.body.selectionModel = data.component.selectionModel
+    }
+
+    /**
+     * @param {Object} data
+     */
+    onShowAnimationsChange(data) {
+        this.grid.animateVisuals = data.value
     }
 
     /**

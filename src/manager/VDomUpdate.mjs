@@ -108,6 +108,16 @@ class VDomUpdate extends Collection {
      */
     inFlightUpdateMap = null;
     /**
+     * A Map that stores callbacks to be executed immediately after a component's VDOM update
+     * finishes, but BEFORE the `needsVdomUpdate` check for the next cycle.
+     *
+     * Key: componentId, Value: callback Function
+     *
+     * @member {Map<String, Function>} preUpdateMap=new Map()
+     * @protected
+     */
+    preUpdateMap = new Map()
+    /**
      * A Map that stores Promise `resolve` functions associated with a component's update.
      * When a component's VDOM update is finalized, the callbacks for its ID are executed,
      * resolving the Promise returned by the component's `update()` method.
@@ -186,6 +196,20 @@ class VDomUpdate extends Collection {
         }
 
         me.executePromiseCallbacks(ownerId, ...callbackData)
+    }
+
+    /**
+     * Retrieves and executes the registered Pre-Update callback for a component.
+     * This is called by VdomLifecycle just before checking `needsVdomUpdate`.
+     * @param {String} id The component ID.
+     */
+    executePreUpdates(id) {
+        let callback = this.preUpdateMap.get(id);
+
+        if (callback) {
+            this.preUpdateMap.delete(id);
+            callback()
+        }
     }
 
     /**
@@ -284,9 +308,7 @@ class VDomUpdate extends Collection {
         const item = this.mergedCallbackMap.get(ownerId);
 
         if (item) {
-            const
-                ids = new Set(item.children.keys()),
-                owner = Neo.getComponent(ownerId);
+            const ids = new Set(item.children.keys());
 
             // Add Bridge Paths: Walk up from each merged child to the owner
             item.children.forEach((meta, childId) => {
@@ -304,6 +326,7 @@ class VDomUpdate extends Collection {
 
             return ids
         }
+
         return null
     }
 
@@ -374,6 +397,16 @@ class VDomUpdate extends Collection {
         }
 
         item.children.push({childId, resolve})
+    }
+
+    /**
+     * Registers a callback to be executed for a component immediately after its current
+     * VDOM update finishes, but before the next update cycle begins.
+     * @param {String} id The component ID.
+     * @param {Function} callback
+     */
+    registerPreUpdate(id, callback) {
+        this.preUpdateMap.set(id, callback)
     }
 
     /**

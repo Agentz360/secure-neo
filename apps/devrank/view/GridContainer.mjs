@@ -1,7 +1,5 @@
-import BaseGridContainer  from '../../../src/grid/Container.mjs';
-import Component          from '../../../src/component/Base.mjs';
-import Contributors       from '../store/Contributors.mjs';
-import CountryFlags       from '../../../src/util/CountryFlags.mjs';
+import BaseGridContainer from '../../../src/grid/Container.mjs';
+import Contributors      from '../store/Contributors.mjs';
 
 /**
  * @class DevRank.view.GridContainer
@@ -19,11 +17,24 @@ class GridContainer extends BaseGridContainer {
          */
         cls: ['devrank-grid-container'],
         /**
+         * @member {Boolean} commitsOnly_=false
+         * @reactive
+         */
+        commitsOnly_: false,
+        /**
+         * @member {Boolean} animateVisuals_=true
+         * @reactive
+         */
+        animateVisuals_: true,
+        /**
          * @member {Object} body
          */
         body: {
             bufferColumnRange: 3,
-            bufferRowRange   : 5
+            bufferRowRange   : 5,
+            listeners        : {
+                isScrollingChange: 'onGridIsScrollingChange'
+            }
         },
         /**
          * Default configs for each column
@@ -54,6 +65,80 @@ class GridContainer extends BaseGridContainer {
     }
 
     /**
+     * @param {Boolean} value
+     * @param {Boolean} oldValue
+     */
+    afterSetAnimateVisuals(value, oldValue) {
+        if (oldValue !== undefined) {
+            this.body.animateVisuals = value;
+            this.fire('animateVisualsChange', {value})
+        }
+    }
+
+    /**
+     * @param {Boolean} value
+     * @param {Boolean} oldValue
+     */
+    afterSetCommitsOnly(value, oldValue) {
+        if (oldValue === undefined) return;
+
+        let me           = this,
+            {store}      = me,
+            activeSorter = store.sorters?.[0],
+            prefix       = value ? 'cy' : 'y';
+
+        // 1. Update Column Renderers & Components
+        me.columns.items.forEach(column => {
+            let {dataField} = column;
+
+            if (/^y\d{4}$/.test(dataField)) {
+                // Swap renderer to read from 'cy' field if commitsOnly is true
+                // Note: We keep the dataField as 'yXXXX' to preserve pooling stability.
+                if (value) {
+                    column.renderer = ({record}) => record['c' + dataField] || '';
+                } else {
+                    column.renderer = ({value}) => value || ''; // Restore default
+                }
+            } else if (dataField === 'total_contributions') {
+                if (value) {
+                    column.renderer = ({record}) => {
+                        const total = record.commits_array?.reduce((a, b) => a + b, 0) || 0;
+                        return new Intl.NumberFormat().format(total);
+                    };
+                } else {
+                    column.renderer = ({value}) => new Intl.NumberFormat().format(value);
+                }
+            } else if (dataField === 'activity') {
+                // Update Sparkline Component to read from correct prefix
+                column.component = ({record}) => {
+                    const data = [];
+                    for (let i = 2010; i <= 2025; i++) {
+                        data.push(record[`${prefix}${i}`] || 0);
+                    }
+                    return {values: data};
+                };
+            }
+        });
+
+        // 2. Update Active Sorter if needed
+        if (activeSorter) {
+            let {property} = activeSorter;
+
+            // Check if we are sorting by a year (either yXXXX or cyXXXX)
+            if (/^(y|cy)\d{4}$/.test(property)) {
+                let year = property.replace(/^(y|cy)/, '');
+                // Switch to the target prefix
+                activeSorter.property = `${prefix}${year}`;
+            } else if (property === 'total_contributions' || property === 'total_commits') {
+                activeSorter.property = value ? 'total_commits' : 'total_contributions';
+            }
+        }
+
+        // 3. Refresh Grid View
+        me.body.createViewData();
+    }
+
+    /**
      *
      */
     buildDynamicColumns() {
@@ -64,35 +149,10 @@ class GridContainer extends BaseGridContainer {
             width    : 60,
             cellAlign: 'right'
         }, {
+            type     : 'githubUser',
             dataField: 'login',
             text     : 'User',
-            width    : 250,
-            type     : 'component',
-            component: ({record}) => ({
-                module: Component,
-                cls   : ['user-cell'],
-                vdom  : {
-                    cls: ['user-cell'],
-                    cn : [{
-                        tag: 'img',
-                        cls: ['avatar'],
-                        src: record.avatar_url
-                    }, {
-                        cls: ['user-info'],
-                        cn : [{
-                            tag   : 'a',
-                            cls   : ['username'],
-                            href  : `https://github.com/${record.login}`,
-                            target: '_blank',
-                            text  : record.login
-                        }, {
-                            tag : 'span',
-                            cls : ['name'],
-                            text: record.name && record.name !== record.login ? record.name : ''
-                        }]
-                    }]
-                }
-            })
+            width    : 250
         }, {
             dataField           : 'total_contributions',
             text                : 'Total',
@@ -128,47 +188,25 @@ class GridContainer extends BaseGridContainer {
             width    : 200,
             renderer : ({value}) => value ? value.replace(/^@/, '') : ''
         }, {
+            type     : 'countryFlag',
             dataField: 'location',
             text     : 'Location',
-            width    : 200,
-            type     : 'component',
-            component: ({record}) => {
-                const value = record.location;
-                const url   = CountryFlags.getFlagUrl(value);
-
-                return {
-                    module: Component,
-                    cls   : ['location-cell'],
-                    vdom  : {
-                        cls: ['location-cell'],
-                        cn : [
-                            url ? {
-                                tag  : 'img',
-                                cls  : ['country-flag'],
-                                src  : url,
-                                title: value
-                            } : {
-                                tag: 'span',
-                                cls: ['country-placeholder']
-                            }, {
-                                tag : 'span',
-                                cls : ['location-text'],
-                                text: value || ''
-                            }
-                        ]
-                    }
-                }
-            }
+            width    : 200
         }, {
             dataField: 'first_year',
             text     : 'Since', width: 80,
             cellAlign: 'center'
         }, {
-            dataField: 'last_updated',
-            text     : 'Updated',
-            width    : 120,
-            cellAlign: 'right',
-            renderer : ({value}) => new Date(value).toISOString().split('T')[0]
+            dataField: 'linkedin_url',
+            text     : 'LI',
+            width    : 50,
+            cellAlign: 'center',
+            renderer : ({value}) => value ? `<a href="${value}" target="_blank" class="fa-brands fa-linkedin" style="color: #0077b5; font-size: 20px;"></a>` : ''
+        }, {
+            type     : 'githubOrgs',
+            dataField: 'organizations',
+            text     : 'Orgs',
+            width    : 150
         }];
 
         // Add Year Columns
@@ -181,15 +219,47 @@ class GridContainer extends BaseGridContainer {
                 cellAlign: 'center',
                 renderer : ({value}) => value || '',
                 cellCls  : ({value}) => {
-                    if (!value)       return 'heatmap-cell-0';
-                    if (value < 100)  return 'heatmap-cell-1';
-                    if (value < 1000) return 'heatmap-cell-2';
-                    return 'heatmap-cell-3';
+                    let cls = ['neo-heatmap'];
+
+                    if (!value) {
+                        cls.push('heatmap-cell-0')
+                    } else if (value < 100) {
+                        cls.push('heatmap-cell-1')
+                    } else if (value < 1000) {
+                        cls.push('heatmap-cell-2')
+                    } else {
+                        cls.push('heatmap-cell-3')
+                    }
+
+                    return cls
                 }
             });
         }
 
+        columns.push({
+            dataField: 'last_updated',
+            text     : 'Updated',
+            width    : 120,
+            cellAlign: 'right',
+            renderer : ({value}) => new Date(value).toISOString().split('T')[0]
+        });
+
         this.columns = columns
+    }
+
+    /**
+     * @param {Object} opts
+     */
+    onSortColumn(opts) {
+        // Intercept sort on year columns to use correct field
+        if (this.commitsOnly) {
+            if (/^y\d{4}$/.test(opts.property)) {
+                opts.property = 'c' + opts.property; // y2020 -> cy2020
+            } else if (opts.property === 'total_contributions') {
+                opts.property = 'total_commits';
+            }
+        }
+        super.onSortColumn(opts);
     }
 }
 

@@ -20,11 +20,11 @@ subIssues:
   - '[x] 8934 Feat: DevRank Grid Expansion'
   - '[x] 8935 Feat: Yearly Breakdown Columns & Heatmap'
   - '[x] 8936 Fix: RecordFactory mapping logic not triggering for missing source keys'
-  - '[ ] 8937 Feat: Discovery Engine - The Spider'
+  - '[x] 8937 Feat: Discovery Engine - The Spider'
   - '[ ] 8938 Feat: UI Filtering Logic'
   - '[x] 8939 Feat: Country Flag Column'
   - '[x] 8940 Feat: Activity Sparkline Column'
-  - '[ ] 8941 Feat: Implement Neo.form.field.CountryFlagPicker'
+  - '[x] 8941 Feat: Implement Neo.form.field.CountryFlagPicker'
   - '[x] 8942 Refactor: DevRank Grid Location Column (VDOM + SCSS)'
   - '[x] 8943 Feat: Interactive Living Sparklines'
   - '[x] 8944 Feat: Sparkline Pulse Animation'
@@ -38,8 +38,67 @@ subIssues:
   - '[x] 8961 Fix: Memory Leak in Neo.component.Canvas due to missing destroy()'
   - '[x] 8962 Perf: Apply CSS containment to Grid Rows'
   - '[x] 8963 Feat: Smooth Data Transitions for Sparklines'
-subIssuesCompleted: 21
-subIssuesTotal: 24
+  - '[x] 8997 Feat: DevRank Selection Model Tab'
+  - '[x] 9005 Feat: Refactor Portal Header to Framework (using Dynamic Worker Arch)'
+  - '[x] 9006 Refactor DevRank Controls Button to Header Toolbar'
+  - '[x] 9007 Feat: Enhance DevRank Grid Styling (Dark Theme)'
+  - '[x] 9022 Feat: DevRank Backend Service Architecture'
+  - '[x] 9023 Feat: DevRank User Lifecycle Management'
+  - '[x] 9024 Refactor: Optimize DevRank User Index Storage'
+  - '[x] 9025 Feat: DevRank Data Enrichment (LinkedIn & Orgs)'
+  - '[x] 9026 Chore: Commit DevRank Data Artifacts'
+  - '[x] 9027 Chore: Add DevRank CLI Scripts to package.json'
+  - '[x] 9028 Refactor: DevRank Updater Checkpointing'
+  - '[x] 9029 Feat: DevRank Relevance Threshold'
+  - '[x] 9030 Refactor: DevRank Data Naming Convention & Whitelist'
+  - '[x] 9031 Feat: DevRank Cleanup Service'
+  - '[x] 9032 Feat: DevRank Spider Random Walk Strategy'
+  - '[x] 9033 Refactor: DevRank Spider Checkpointing'
+  - '[x] 9034 Feat: DevRank Grid - LinkedIn & Organizations Columns'
+  - '[x] 9035 Feat: GitHubOrgs Component & Grid Column'
+  - '[x] 9036 Perf: Optimize GitHub Avatar Sizes'
+  - '[x] 9037 Refactor: Dynamic Year Fields in Contributor Model'
+  - '[x] 9038 Style: DevRank Grid Selection Overrides Heatmap'
+  - '[x] 9039 Feat: Support .env token auth for DevRank Services'
+  - '[x] 9040 Refactor: Make DevRank Manager a Singleton'
+  - '[x] 9041 Enhancement: Add Spider Summary Logs'
+  - '[x] 9042 Enhancement: Dynamic High Star Ranges for Spider'
+  - '[x] 9043 Enhancement: DevRank Updater Smart Scheduling & Logs'
+  - '[x] 9044 Fix: DevRank Updater Infinite Loop & Tracker Pruning'
+  - '[x] 9045 Feat: DevRank Active Pruning & Auto-Cleanup'
+  - '[x] 9046 Fix: DevRank Tracker Timestamp Update Logic'
+  - '[x] 9047 Feat: DevRank Whitelist Synchronization & Protection'
+  - '[x] 9048 Feat: DevRank CLI Interactive Prompts (Inquirer)'
+  - '[x] 9049 Docs: Knowledge Base Enhancement for DevRank Services'
+  - '[x] 9054 Perf: Optimize GitHubOrgs with Node Pooling & Visibility'
+  - '[x] 9055 Feat: Configurable renderFullPool for GitHubOrgs Component'
+  - '[x] 9053 Perf: Optimize CountryFlag to Prevent Grid Reflows'
+  - '[x] 9052 Perf: Optimize Sparkline Backpressure & Investigate Grid Reflows'
+  - '[x] 9051 Enhancement: Polish Country Field & Inline Label Support'
+  - '[x] 9050 Perf: Optimize DomAccess.syncAligns to avoid scroll thrashing'
+  - '[x] 9056 Fix: CountryFlag not resetting when value is null'
+  - '[x] 9057 Refactor DevRank Controls: Split Search & Reorder Fields'
+  - '[x] 9058 Feat: DevRank Location Normalizer & Data Enrichment'
+  - '[x] 9059 Optimize & Minify DevRank Data Schema'
+  - '[x] 9062 Fix: Cleanup Service incompatible with minified schema'
+  - '[x] 9063 Perf: Refactor Updater to use Lightweight Contribution Counters'
+  - '[x] 9064 Feat: Implement ''Commits Only'' Toggle for DevRank Grid'
+  - '[x] 9065 Feat: Persist Yearly Commits Array in DevRank Data'
+  - '[x] 9078 Feat: DevRank Heatmap CSS Transitions'
+  - '[x] 9079 Feat: DevRank Header "Show Off" Kinetic Scroll Effect'
+  - '[x] 9080 Perf: DevRank Header Adaptive Backpressure'
+  - '[x] 9081 Feat: DevRank Global Animation Toggle'
+  - '[x] 9082 Refactor Portal Content Viewer to Framework Component'
+  - '[x] 9083 Feat: DevRank GitHub API Rate Limit Protection'
+  - '[x] 9084 Enhancement: DevRank Atomic File Persistence'
+  - '[x] 9085 Feat: DevRank Spider Community Discovery Strategy'
+  - '[x] 9086 Feat: DevRank Spider CLI Strategy Selection'
+  - '[x] 9087 Fix: Broken GitHub Rate Limit Detection and Graceful Exit'
+  - '[x] 9088 Fix: DevRank Spider Premature Exit (Split Core/Search Rate Limits)'
+  - '[x] 9096 Feat: GitHub API Secondary Rate Limit Handling & Concurrency Tuning'
+  - '[x] 9097 Feat: Include Repository Creations in DevRank Contributions'
+subIssuesCompleted: 82
+subIssuesTotal: 83
 blockedBy: []
 blocking: []
 ---
@@ -107,4 +166,26 @@ The goal is to create a meritocratic index of the open-source ecosystem, powered
 - 2026-02-03T13:01:53Z @tobiu added sub-issue #8961
 - 2026-02-03T13:01:55Z @tobiu added sub-issue #8962
 - 2026-02-03T13:01:57Z @tobiu added sub-issue #8963
+- 2026-02-04T17:21:26Z @tobiu referenced in commit `abe67c3` - "#8930 "neo-theme-neo-dark", "neo-theme-neo-light""
+- 2026-02-05T09:31:30Z @tobiu added sub-issue #8997
+- 2026-02-05T14:51:36Z @tobiu added sub-issue #9005
+- 2026-02-05T17:44:24Z @tobiu added sub-issue #9006
+- 2026-02-05T19:32:12Z @tobiu added sub-issue #9007
+- 2026-02-07T16:18:00Z @tobiu added sub-issue #9022
+- 2026-02-07T16:18:05Z @tobiu added sub-issue #9023
+- 2026-02-07T16:31:47Z @tobiu added sub-issue #9024
+- 2026-02-07T16:34:23Z @tobiu added sub-issue #9025
+- 2026-02-07T16:49:32Z @tobiu added sub-issue #9026
+- 2026-02-07T18:07:27Z @tobiu added sub-issue #9027
+- 2026-02-07T18:11:44Z @tobiu added sub-issue #9028
+- 2026-02-07T18:17:24Z @tobiu added sub-issue #9029
+- 2026-02-07T18:20:58Z @tobiu added sub-issue #9030
+- 2026-02-07T18:31:08Z @tobiu added sub-issue #9031
+- 2026-02-07T18:44:23Z @tobiu added sub-issue #9032
+- 2026-02-07T19:01:40Z @tobiu added sub-issue #9033
+- 2026-02-07T19:26:45Z @tobiu added sub-issue #9034
+- 2026-02-07T19:39:55Z @tobiu added sub-issue #9035
+- 2026-02-07T19:48:04Z @tobiu added sub-issue #9036
+- 2026-02-07T19:58:09Z @tobiu added sub-issue #9037
+- 2026-02-07T20:08:43Z @tobiu added sub-issue #9038
 

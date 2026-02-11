@@ -1,0 +1,16 @@
+[
+  "angular-robot",
+  "bors",
+  "browser-automation-bot",
+  "dotnet-bot",
+  "engine-flutter-autoroll",
+  "k8s-ci-robot",
+  "nextcloud-bot",
+  "renovate-bot",
+  "robobun",
+  "robocdnjs",
+  "scala-steward",
+  "skia-flutter-autoroll",
+  "spring-builds",
+  "yoshi-automation"
+]
