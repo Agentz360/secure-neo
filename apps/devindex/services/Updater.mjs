@@ -56,7 +56,11 @@ class Updater extends Base {
         console.log(`[Updater] Processing batch of ${logins.length} users...`);
         let results = [];
         let indexUpdates = [];
+        let failedLogins = [];
+        let recoveredLogins = [];
         let successCount = 0;
+        let failCount = 0;
+        let skipCount = 0;
         const saveInterval = config.updater.saveInterval;
         const whitelist = await Storage.getWhitelist();
         const concurrency = 8; // Slightly reduced from 10 to balance speed vs stability
@@ -73,21 +77,28 @@ class Updater extends Base {
                     if (meetsThreshold || isWhitelisted) {
                         results.push(data);
                         indexUpdates.push({ login, lastUpdate: data.lu });
+                        recoveredLogins.push(login); // Remove from Penalty Box
                         successCount++;
                         console.log(`[${login}] OK (${data.tc})` + (isWhitelisted && !meetsThreshold ? ' [WHITELISTED]' : ''));
                     } else {
                         indexUpdates.push({ login, delete: true });
-                        successCount++;
+                        skipCount++;
                         console.log(`[${login}] SKIPPED (Low Activity: ${data.tc}) [PRUNED]`);
                     }
                 } else {
                     indexUpdates.push({ login, lastUpdate: new Date().toISOString() });
-                    successCount++;
+                    skipCount++;
                     console.log(`[${login}] SKIPPED (No Data/Bot)`);
                 }
             } catch (error) {
                 console.log(`[${login}] FAILED: ${error.message}`);
                 
+                // Penalty Box: Update timestamp to push failed users to the back of the queue
+                // This prevents them from blocking the pipeline in the next run
+                indexUpdates.push({ login, lastUpdate: new Date().toISOString() });
+                failedLogins.push(login); // Add to Penalty Box
+                failCount++; // Count as processed even if failed
+
                 // Kill-switch: If we hit a rate limit error, force internal state to 0 to trigger graceful shutdown
                 if (error.message.includes('rate limit')) {
                     console.warn(`[Updater] 🚨 Rate limit hit for ${login}. Forcing shutdown sequence.`);
@@ -114,23 +125,28 @@ class Updater extends Base {
 
             // Checkpoint Save
             if (results.length >= saveInterval) {
-                await this.saveCheckpoint(results, indexUpdates);
+                await this.saveCheckpoint(results, indexUpdates, failedLogins, recoveredLogins);
                 results = [];
                 indexUpdates = [];
+                failedLogins = [];
+                recoveredLogins = [];
             }
         }
 
         // Final Save for remaining items
-        if (results.length > 0 || indexUpdates.length > 0) {
-            await this.saveCheckpoint(results, indexUpdates);
+        if (results.length > 0 || indexUpdates.length > 0 || failedLogins.length > 0) {
+            await this.saveCheckpoint(results, indexUpdates, failedLogins, recoveredLogins);
         }
         
         console.log('--------------------------------------------------');
         console.log('[Updater] Run Complete.');
         console.log(`[Updater] Successfully Updated: ${successCount}`);
+        console.log(`[Updater] Skipped/Pruned: ${skipCount}`);
+        console.log(`[Updater] Failed (Penalty Box): ${failCount}`);
         
         if (initialBacklog > 0) {
-            const remaining = Math.max(0, initialBacklog - successCount);
+            const totalProcessed = successCount + skipCount + failCount;
+            const remaining = Math.max(0, initialBacklog - totalProcessed);
             console.log(`[Updater] Remaining Backlog: ${remaining}`);
         }
         
@@ -141,10 +157,17 @@ class Updater extends Base {
      * Helper to save partial results.
      * @param {Array} results 
      * @param {Array} indexUpdates 
+     * @param {Array} failedLogins 
+     * @param {Array} recoveredLogins 
      */
-    async saveCheckpoint(results, indexUpdates) {
+    async saveCheckpoint(results, indexUpdates, failedLogins = [], recoveredLogins = []) {
         if (results.length > 0) await Storage.updateUsers(results);
         if (indexUpdates.length > 0) await Storage.updateTracker(indexUpdates);
+        
+        // Manage Penalty Box
+        if (failedLogins.length > 0) await Storage.updateFailed(failedLogins, true);
+        if (recoveredLogins.length > 0) await Storage.updateFailed(recoveredLogins, false);
+
         console.log(`[Updater] Checkpoint: Saved ${results.length} records. (API Quota: ${GitHub.rateLimit.core.remaining}/${GitHub.rateLimit.core.limit})`);
     }
 
@@ -176,6 +199,7 @@ class Updater extends Base {
                     bio
                     followers { totalCount }
                     isHireable
+                    hasSponsorsListing
                     twitterUsername
                     websiteUrl
                     socialAccounts(first: 5) {
@@ -215,7 +239,7 @@ class Updater extends Base {
 
         if (!profileRes?.user) return null;
 
-        const { createdAt, avatarUrl, name, location, company, bio, followers, socialAccounts } = profileRes.user;
+        const { createdAt, avatarUrl, name, location, company, bio, followers, socialAccounts, isHireable, hasSponsorsListing, twitterUsername, websiteUrl } = profileRes.user;
         const startYear = new Date(createdAt).getFullYear();
         const currentYear = new Date().getFullYear();
 
@@ -244,6 +268,7 @@ class Updater extends Base {
                     totalPullRequestContributions
                     totalPullRequestReviewContributions
                     totalRepositoryContributions
+                    restrictedContributionsCount
                 }`;
             }
             query += ` } }`;
@@ -261,13 +286,30 @@ class Updater extends Base {
 
         // Fetch year chunks sequentially to be safe
         for (const chunk of yearChunks) {
-            await fetchYears(chunk.start, chunk.end);
+            try {
+                // 1. Try Fast Path (Batch of 4)
+                await fetchYears(chunk.start, chunk.end);
+            } catch (err) {
+                // 2. Detect Failure (504/502/Timeout)
+                console.warn(`[Updater] [${username}] Batch failed (${chunk.start}-${chunk.end}). Falling back to single years...`);
+
+                // 3. Fallback: Process year by year
+                for (let y = chunk.start; y <= chunk.end; y++) {
+                    try {
+                        await fetchYears(y, y);
+                    } catch (innerErr) {
+                        console.error(`[Updater] [${username}] Year ${y} failed even individually.`);
+                        throw innerErr; // If even 1 year fails, the user is truly broken
+                    }
+                }
+            }
         }
 
         // 4. Aggregate Data & Minify
         let total = 0;
         const yearsArr = [];
         const commitsArr = [];
+        const privateArr = [];
         
         // Ensure years are sorted and fill the array sequentially from startYear
         for (let year = startYear; year <= currentYear; year++) {
@@ -275,17 +317,19 @@ class Updater extends Base {
             const collection = contribData[key];
             
             const commits = collection?.totalCommitContributions || 0;
+            const privateStats = collection?.restrictedContributionsCount || 0;
 
             // Sum up the lightweight counters
-            // We expressly EXCLUDE restrictedContributionsCount as we don't have access (and it triggers 502s)
             const val = (commits) +
                         (collection?.totalIssueContributions || 0) +
                         (collection?.totalPullRequestContributions || 0) +
                         (collection?.totalPullRequestReviewContributions || 0) +
-                        (collection?.totalRepositoryContributions || 0);
+                        (collection?.totalRepositoryContributions || 0) +
+                        privateStats;
 
             yearsArr.push(val);
             commitsArr.push(commits);
+            privateArr.push(privateStats);
             total += val;
         }
 
@@ -301,7 +345,8 @@ class Updater extends Base {
             fy: startYear,
             lu: new Date().toISOString(),
             y: yearsArr,
-            cy: commitsArr
+            cy: commitsArr,
+            py: privateArr
         };
 
         if (name && name !== username) minified.n = name;
@@ -318,6 +363,12 @@ class Updater extends Base {
         if (bio) minified.b = bio;
         if (followers?.totalCount > 0) minified.fl = followers.totalCount;
         if (linkedin_url) minified.li = linkedin_url;
+
+        // Metadata
+        if (isHireable) minified.h = 1;
+        if (hasSponsorsListing) minified.s = 1;
+        if (twitterUsername) minified.t = twitterUsername;
+        if (websiteUrl) minified.w = websiteUrl;
 
         if (orgs.length > 0) {
             // Take top 5, map to [login, id]

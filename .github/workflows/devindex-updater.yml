@@ -1,0 +1,58 @@
+name: DevIndex Updater
+
+on:
+  schedule:
+    - cron: '0 * * * *' # Run hourly
+  workflow_dispatch: # Allow manual trigger
+
+concurrency:
+  group: devindex-updater
+  cancel-in-progress: false
+
+jobs:
+  update-index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to push changes
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run DevIndex Updater
+        run: npm run devindex:update -- --limit=500
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit, Rebase and Push
+        run: |
+          # Configure Git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Check for changes in specific files
+          if [[ -n $(git status -s apps/devindex/resources/users.jsonl apps/devindex/resources/tracker.json apps/devindex/resources/failed.json) ]]; then
+            echo "Changes detected in data files."
+
+            # Stage the files
+            git add apps/devindex/resources/users.jsonl apps/devindex/resources/tracker.json apps/devindex/resources/failed.json
+
+            # Commit
+            git commit -m "chore(devindex): Hourly index update [skip ci]"
+
+            # Rebase on top of remote changes to handle concurrent pushes
+            git pull origin dev --rebase
+
+            # Push changes
+            git push origin dev
+          else
+            echo "No changes detected. Skipping commit."
+          fi

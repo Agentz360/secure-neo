@@ -1,5 +1,6 @@
 import BaseGridContainer from '../../../../src/grid/Container.mjs';
 import Contributors      from '../../store/Contributors.mjs';
+import StatusToolbar     from './StatusToolbar.mjs';
 
 /**
  * @class DevIndex.view.home.GridContainer
@@ -35,6 +36,13 @@ class GridContainer extends BaseGridContainer {
             listeners        : {
                 isScrollingChange: 'onGridIsScrollingChange'
             }
+        },
+        /**
+         * @member {Object} footerToolbar
+         */
+        footerToolbar: {
+            module: StatusToolbar,
+            flex  : 'none'
         },
         /**
          * Default configs for each column
@@ -189,7 +197,8 @@ class GridContainer extends BaseGridContainer {
             renderer : ({value}) => value ? value.replace(/^@/, '') : ''
         }, {
             type     : 'countryFlag',
-            dataField: 'location',
+            dataField: 'country_code',
+            sortable : false,
             text     : 'Location',
             width    : 200
         }, {

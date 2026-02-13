@@ -2,6 +2,7 @@ import * as selection from '../../../../src/selection/grid/_export.mjs';
 import CheckBox       from '../../../../src/form/field/CheckBox.mjs';
 import Container      from '../../../../src/container/Base.mjs';
 import Country        from '../../../../src/form/field/Country.mjs';
+import Profile        from './ProfileContainer.mjs';
 import Radio          from '../../../../src/form/field/Radio.mjs';
 import TabContainer   from '../../../../src/tab/Container.mjs';
 
@@ -28,6 +29,7 @@ class ControlsContainer extends Container {
             module        : TabContainer,
             cls           : ['devindex-controls-container-content'],
             dragResortable: true,
+            reference     : 'controls-tab-container',
 
             headerToolbar: {
                 sortZoneConfig: {
@@ -41,15 +43,18 @@ class ControlsContainer extends Container {
                 layout: 'vbox',
 
                 items: [{
-                    module       : Country,
-                    clearable    : true,
-                    labelPosition: 'inline',
-                    labelText    : 'Country',
-                    listeners    : {change: 'up.onFilterChange'},
-                    name         : 'location',
-                    showFlags    : true,
-                    style        : {marginTop: '.3em'},
-                    width        : 200
+                    module        : Country,
+                    clearable     : true,
+                    forceSelection: true,
+                    labelPosition : 'inline',
+                    labelText     : 'Country',
+                    listeners     : {change: 'up.onFilterChange'},
+                    name          : 'country_code',
+                    reference     : 'country-field',
+                    showFlags     : true,
+                    style         : {marginTop: '.3em'},
+                    valueField    : 'code',
+                    width         : 200
                 }, {
                     ntype        : 'textfield',
                     clearable    : true,
@@ -86,11 +91,11 @@ class ControlsContainer extends Container {
                     style        : {marginTop: '1em'},
                     valueLabel   : 'Show Animations',
                     width        : 200
-                }, {
-                    ntype    : 'label',
-                    reference: 'count-rows-label',
-                    style    : {marginTop: '1em'}
                 }]
+            }, {
+                module   : Profile,
+                header   : {text: 'Profile'},
+                reference: 'profile-container'
             }, {
                 module: Container,
                 header: {text: 'Selection'},
@@ -157,15 +162,6 @@ class ControlsContainer extends Container {
 
     onConstructed() {
         super.onConstructed();
-
-        let me      = this,
-            {store} = me.grid;
-
-        store.on({
-            filter: me.updateRowsLabel,
-            load  : me.updateRowsLabel,
-            scope : me
-        })
     }
 
     /**
@@ -179,7 +175,13 @@ class ControlsContainer extends Container {
      * @param {Object} data
      */
     onFilterChange(data) {
-        this.grid.store.getFilter(data.component.name).value = data.value
+        let value = data.component.getSubmitValue();
+
+        if (data.component.name === 'country_code' && value) {
+            value = value.toUpperCase()
+        }
+
+        this.grid.store.getFilter(data.component.name).value = value
     }
 
     /**
@@ -194,17 +196,6 @@ class ControlsContainer extends Container {
      */
     onShowAnimationsChange(data) {
         this.grid.animateVisuals = data.value
-    }
-
-    /**
-     *
-     */
-    updateRowsLabel() {
-        let {store} = this.grid;
-
-        if (!store.isLoading) {
-            this.getItem('count-rows-label').text = 'Visible: ' + store.getCount()
-        }
     }
 }
 
